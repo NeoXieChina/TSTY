@@ -54,7 +54,18 @@ class _BottomNavigationBarCustomState extends State<BottomNavigationBarCustom> {
         child: ClipRRect(
           borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
           child: Container(
-            color: Theme.of(context).colorScheme.primary,
+            //color: Theme.of(context).colorScheme.primary,
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: [
+                  Theme.of(context).colorScheme.primaryContainer,
+                  Theme.of(context).colorScheme.secondaryContainer,
+                  Theme.of(context).colorScheme.primaryContainer,
+                ],
+                begin: Alignment.centerLeft,
+                end: Alignment.centerRight,
+              ),
+            ),
             child: Theme(
               data: Theme.of(context).copyWith(canvasColor: Colors.transparent),
               child: BottomNavigationBar(

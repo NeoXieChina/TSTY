@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:tsty_app/components/common/YiBaseBackground.dart';
 import 'package:tsty_app/components/main/bottomNavigationBarCustom.dart';
 import 'package:tsty_app/constants/tabList.dart';
 import 'package:tsty_app/style/app_theme.dart';
@@ -27,7 +28,9 @@ class _MyAppState extends State<MyApp> {
         builder: (context) {
           return Scaffold(
             body: SafeArea(
-              child: IndexedStack(index: _currentIndex, children: pages),
+              child: YiBaseBackground(
+                child: IndexedStack(index: _currentIndex, children: pages),
+              ),
             ),
             bottomNavigationBar: BottomNavigationBarCustom(
               currentIndex: _currentIndex,
