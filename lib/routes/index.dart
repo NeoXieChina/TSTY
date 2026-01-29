@@ -1,5 +1,8 @@
 // 路由管理
 import 'package:flutter/material.dart';
+import 'package:tsty_app/pages/mine/edit_profile.dart';
+import 'package:tsty_app/pages/mine/parent_entry.dart';
+import 'package:tsty_app/pages/settings/index.dart';
 import 'package:tsty_app/pages/main/index.dart';
 import 'package:tsty_app/style/app_theme.dart';
 
@@ -17,6 +20,9 @@ Widget myApp() {
 Map<String, Widget Function(BuildContext)> getRootRoutes() {
   return {
     "/": (context) => MainPage(), // 主页路由
+    "/settings": (context) => const SettingsPage(),
+    "/mine/edit-profile": (context) => const EditProfilePage(),
+    "/mine/parent-entry": (context) => const ParentEntryPage(),
     //"/login": (context) => LoginPage(), // 登录页路由
   };
 }

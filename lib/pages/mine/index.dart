@@ -59,7 +59,17 @@ class _MinePageState extends State<MinePage> {
                   const SizedBox(height: 24),
                   MineMenuSection(
                     onTap: (action) {
-                      // TODO: wire navigation
+                      switch (action) {
+                        case MineMenuAction.editProfile:
+                          Navigator.of(context).pushNamed('/mine/edit-profile');
+                          break;
+                        case MineMenuAction.parentEntry:
+                          Navigator.of(context).pushNamed('/mine/parent-entry');
+                          break;
+                        case MineMenuAction.settings:
+                          Navigator.of(context).pushNamed('/settings');
+                          break;
+                      }
                     },
                   ),
                   const SizedBox(height: 60),
