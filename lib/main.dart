@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
-import 'package:tsty_app/pages/main/index.dart';
+import 'package:tsty_app/routes/index.dart';
 
 void main() {
-  runApp(const MyApp());
+  runApp(myApp());
 }

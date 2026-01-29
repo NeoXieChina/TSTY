@@ -1,0 +1,675 @@
+<template>
+	<cl-page>
+		<!-- 背景图片 -->
+		<view class="bg-image"></view>
+
+		<!-- 彝族装饰条纹 -->
+		<yi-stripe position="left" :top="30" :segments="12"></yi-stripe>
+		<yi-stripe position="right" :top="40" :segments="12"></yi-stripe>
+
+		<!-- 顶部安全区域 -->
+		<cl-topbar
+			fixed
+			:show-back="false"
+			safe-area-top
+			background-color="#ffffff"
+			:height="0"
+		></cl-topbar>
+
+		<!-- 顶部栏 -->
+		<view class="top-bar">
+			<view class="back-btn" @tap="goBack">
+				<cl-icon name="arrow-left-line" :size="36" color="#3d2800"></cl-icon>
+			</view>
+			<text class="top-title">设置</text>
+			<view class="placeholder-btn"></view>
+		</view>
+
+		<!-- 主内容区 -->
+		<view class="main-content">
+				<!-- 系统设置 -->
+				<view class="section-title">系统设置</view>
+				<view class="settings-section">
+					<view class="setting-item">
+						<view class="setting-label">
+							<view class="setting-icon icon-blue">
+								<cl-icon name="ri-volume-up-fill" :size="32" color="#ffffff"></cl-icon>
+							</view>
+							<text class="setting-text">音效</text>
+						</view>
+						<cl-switch
+							v-model="soundEnabled"
+							:height="48"
+							:width="96"
+							:pt="{
+								className: 'sound-switch',
+								track: {
+									className: 'sound-switch__track'
+								},
+								thumb: {
+									className: 'sound-switch__thumb'
+								}
+							}"
+							@change="onSoundChange"
+							@tap.stop
+						></cl-switch>
+					</view>
+
+					<view class="setting-item" @tap="router.to('/pages/set/general')">
+						<view class="setting-label">
+							<view class="setting-icon icon-purple">
+								<cl-icon name="ri-palette-fill" :size="32" color="#ffffff"></cl-icon>
+							</view>
+							<text class="setting-text">主题颜色</text>
+						</view>
+						<cl-icon name="arrow-right-s-line" :size="32" color="#cc0000"></cl-icon>
+					</view>
+
+					<view class="setting-item" @tap="router.to('/pages/set/general')">
+						<view class="setting-label">
+							<view class="setting-icon icon-yellow">
+								<cl-icon name="ri-font-sans-serif" :size="32" color="#ffffff"></cl-icon>
+							</view>
+							<text class="setting-text">字体大小</text>
+						</view>
+						<cl-icon name="arrow-right-s-line" :size="32" color="#cc0000"></cl-icon>
+					</view>
+				</view>
+
+				<!-- 账号与安全 -->
+				<view class="section-title">账号与安全</view>
+				<view class="settings-section">
+					<view class="setting-item" @tap="showTips('账号安全')">
+						<view class="setting-label">
+							<view class="setting-icon icon-orange">
+								<cl-icon name="ri-shield-user-fill" :size="32" color="#ffffff"></cl-icon>
+							</view>
+							<text class="setting-text">账号安全</text>
+						</view>
+						<cl-icon name="arrow-right-s-line" :size="32" color="#cc0000"></cl-icon>
+					</view>
+
+					<view class="setting-item" @tap="openChangePassword">
+						<view class="setting-label">
+							<view class="setting-icon icon-green">
+								<cl-icon name="ri-key-line" :size="32" color="#ffffff"></cl-icon>
+							</view>
+							<text class="setting-text">修改密码</text>
+						</view>
+						<cl-icon name="arrow-right-s-line" :size="32" color="#cc0000"></cl-icon>
+					</view>
+				</view>
+
+				<!-- 个性化设置 -->
+				<view class="section-title">个性化设置</view>
+				<view class="settings-section">
+					<view class="setting-item" @tap="router.to('/pages/user/select-character')">
+						<view class="setting-label">
+							<view class="setting-icon icon-purple">
+								<cl-icon name="ri-user-3-fill" :size="32" color="#ffffff"></cl-icon>
+							</view>
+							<text class="setting-text">卡通人物选择</text>
+						</view>
+						<cl-icon name="arrow-right-s-line" :size="32" color="#cc0000"></cl-icon>
+					</view>
+				</view>
+
+				<!-- 隐私与安全 -->
+				<view class="section-title">隐私与安全</view>
+				<view class="settings-section">
+					<view class="setting-item" @tap="showTips('隐私设置')">
+						<view class="setting-label">
+							<view class="setting-icon icon-red">
+								<cl-icon name="ri-shield-keyhole-fill" :size="32" color="#ffffff"></cl-icon>
+							</view>
+							<text class="setting-text">隐私设置</text>
+						</view>
+						<cl-icon name="arrow-right-s-line" :size="32" color="#cc0000"></cl-icon>
+					</view>
+
+					<view class="setting-item" @tap="showTips('第三方共享个人信息清单')">
+						<view class="setting-label">
+							<view class="setting-icon icon-blue">
+								<cl-icon name="ri-share-fill" :size="32" color="#ffffff"></cl-icon>
+							</view>
+							<text class="setting-text">第三方共享个人信息清单</text>
+						</view>
+						<cl-icon name="arrow-right-s-line" :size="32" color="#cc0000"></cl-icon>
+					</view>
+
+					<view class="setting-item" @tap="clearCache">
+						<view class="setting-label">
+							<view class="setting-icon icon-gray">
+								<cl-icon name="ri-delete-bin-5-fill" :size="32" color="#ffffff"></cl-icon>
+							</view>
+							<text class="setting-text">清除缓存</text>
+						</view>
+						<cl-icon name="arrow-right-s-line" :size="32" color="#cc0000"></cl-icon>
+					</view>
+				</view>
+
+				<!-- 关于 -->
+				<view class="section-title">关于</view>
+				<view class="settings-section">
+					<view class="setting-item" @tap="router.to('/pages/set/about')">
+						<view class="setting-label">
+							<view class="setting-icon icon-blue">
+								<cl-icon name="ri-information-2-fill" :size="32" color="#ffffff"></cl-icon>
+							</view>
+							<text class="setting-text">关于童声同音</text>
+						</view>
+						<cl-icon name="arrow-right-s-line" :size="32" color="#cc0000"></cl-icon>
+					</view>
+
+					<view class="setting-item" @tap="showTips('帮助与反馈')">
+						<view class="setting-label">
+							<view class="setting-icon icon-green">
+								<cl-icon name="ri-question-fill" :size="32" color="#ffffff"></cl-icon>
+							</view>
+							<text class="setting-text">帮助与反馈</text>
+						</view>
+						<cl-icon name="arrow-right-s-line" :size="32" color="#cc0000"></cl-icon>
+					</view>
+				</view>
+
+				<!-- 退出登录按钮 -->
+				<view class="logout-container">
+					<cl-button
+						type="error"
+						:loading="logoutLoading"
+						:pt="{ className: 'logout-button' }"
+						@tap="toLogout"
+					>
+						<cl-icon v-if="logoutLoading == false" name="logout-circle-fill" :size="32" class="mr-2"></cl-icon>
+						<text>{{ logoutLoading ? '退出中...' : '退出登录' }}</text>
+					</cl-button>
+				</view>
+
+				<!-- 版本信息 -->
+				<view class="version-info">
+					<text class="version-text">版本: 1.0.0 (Build 1001)</text>
+				</view>
+		</view>
+
+		<!-- 底部占位 -->
+		<view class="bottom-spacer"></view>
+
+		<cl-popup v-model="showChangePassword" direction="center" :size="620" :show-header="false">
+			<view class="change-pwd-modal">
+				<text class="change-pwd-title">修改密码</text>
+				<cl-form
+					ref="changePwdFormRef"
+					v-model="changePwdForm"
+					:rules="changePwdRules"
+					label-position="top"
+					:show-asterisk="false"
+					class="change-pwd-form"
+				>
+					<cl-form-item label="原密码" prop="oldPassword" required>
+						<cl-input v-model="changePwdForm.oldPassword" type="password" placeholder="请输入原密码" :border="true"></cl-input>
+					</cl-form-item>
+					<cl-form-item label="新密码" prop="newPassword" required>
+						<cl-input v-model="changePwdForm.newPassword" type="password" placeholder="请输入新密码(6-20位)" :border="true"></cl-input>
+					</cl-form-item>
+					<cl-form-item label="确认新密码" prop="confirmPassword" required>
+						<cl-input v-model="changePwdForm.confirmPassword" type="password" placeholder="请再次输入新密码" :border="true"></cl-input>
+					</cl-form-item>
+				</cl-form>
+
+				<view class="change-pwd-actions">
+					<cl-button :disabled="changePwdLoading" :pt="{ className: 'change-pwd-btn' }" @tap="closeChangePassword">取消</cl-button>
+					<cl-button type="primary" :loading="changePwdLoading" :pt="{ className: 'change-pwd-btn' }" @tap="submitChangePassword">确认</cl-button>
+				</view>
+			</view>
+		</cl-popup>
+	</cl-page>
+</template>
+
+<script setup lang="ts">
+import { ref, type Ref } from "vue";
+import { router, useStore, request } from "@/cool";
+import { useUi, useForm, type ClFormRule } from "@/uni_modules/cool-ui";
+import YiStripe from "@/components/yi-stripe.uvue";
+import { encryptPassword } from "@/cool/utils/crypto";
+
+const ui = useUi();
+const { user } = useStore();
+
+// 音效开关状态
+const soundEnabled = ref<boolean>(true);
+
+// 退出登录加载状态
+const logoutLoading = ref<boolean>(false);
+
+type ChangePwdForm = {
+	oldPassword: string;
+	newPassword: string;
+	confirmPassword: string;
+};
+
+const showChangePassword = ref<boolean>(false);
+const changePwdLoading = ref<boolean>(false);
+
+const changePwdForm = ref<ChangePwdForm>({
+	oldPassword: "",
+	newPassword: "",
+	confirmPassword: ""
+}) as Ref<ChangePwdForm>;
+
+const changePwdRules = new Map<string, ClFormRule[]>([
+	["oldPassword", [{ required: true, message: "请输入原密码" }]],
+	["newPassword", [{ required: true, message: "请输入新密码" }]],
+	["confirmPassword", [{ required: true, message: "请确认新密码" }]]
+]);
+
+const { formRef: changePwdFormRef, validate: validateChangePwdForm, clearValidate: clearChangePwdValidate } = useForm();
+
+// 返回上一页
+function goBack() {
+	router.back();
+}
+
+function onSoundChange(val: boolean) {
+	ui.showToast({
+		message: val ? "音效已开启" : "音效已关闭"
+	});
+}
+
+// 显示提示
+function showTips(title : string) {
+	ui.showToast({
+		message: `${title}功能开发中...`
+	});
+}
+
+function safeClearChangePwdValidate(): void {
+	if (changePwdFormRef.value == null) return;
+	changePwdFormRef.value.clearValidate();
+}
+
+function openChangePassword() {
+	changePwdForm.value.oldPassword = "";
+	changePwdForm.value.newPassword = "";
+	changePwdForm.value.confirmPassword = "";
+	showChangePassword.value = true;
+	setTimeout(() => {
+		safeClearChangePwdValidate();
+	}, 0);
+}
+
+function closeChangePassword() {
+	showChangePassword.value = false;
+	safeClearChangePwdValidate();
+}
+
+async function doChangePassword(oldPwd: string, newPwd: string, confirmPwd: string): Promise<void> {
+	if (changePwdLoading.value) return;
+	changePwdLoading.value = true;
+	try {
+		await request<UTSJSONObject>({
+			url: "/api/v1/auth/change-password",
+			method: "POST",
+			data: {
+				oldPassword: encryptPassword(oldPwd),
+				newPassword: encryptPassword(newPwd),
+				confirmPassword: encryptPassword(confirmPwd)
+			}
+		});
+		ui.showToast({ message: "密码修改成功" });
+		closeChangePassword();
+	} catch (err: any) {
+		let msg = "修改密码失败";
+		const e = err as UTSJSONObject;
+		const m = e != null ? (e["message"] as string | null) : null;
+		if (m != null && m != "") {
+			msg = m;
+		}
+		ui.showToast({ message: msg });
+	} finally {
+		changePwdLoading.value = false;
+	}
+}
+
+function submitChangePassword(): void {
+	if (changePwdLoading.value) return;
+
+	validateChangePwdForm(function (valid, _errors) {
+		if (valid == false) {
+			return;
+		}
+
+		const oldPwd = changePwdForm.value.oldPassword.trim();
+		const newPwd = changePwdForm.value.newPassword.trim();
+		const confirmPwd = changePwdForm.value.confirmPassword.trim();
+
+		if (newPwd.length < 6 || newPwd.length > 20) {
+			ui.showToast({ message: "密码长度应为6-20位" });
+			return;
+		}
+		if (confirmPwd != newPwd) {
+			ui.showToast({ message: "两次输入的密码不一致" });
+			return;
+		}
+
+		doChangePassword(oldPwd, newPwd, confirmPwd);
+	});
+}
+
+// 清除缓存
+function clearCache() {
+	ui.showConfirm({
+		title: "清除缓存",
+		message: "确定要清除缓存吗？",
+		callback(action) {
+			if (action == "confirm") {
+				ui.showToast({
+					message: "缓存已清除"
+				});
+			}
+		}
+	});
+}
+
+// 退出登录
+function toLogout() {
+	ui.showConfirm({
+		title: "提示",
+		message: "确定退出登录吗？",
+		callback(action) {
+			if (action == "confirm") {
+				logoutLoading.value = true;
+
+				// 模拟退出操作
+				setTimeout(() => {
+					logoutLoading.value = false;
+					user.logout();
+				}, 1000);
+			}
+		}
+	});
+}
+</script>
+
+<style lang="scss">
+// 背景图片
+.bg-image {
+	position: absolute;
+	top: 0;
+	left: 0;
+	width: 100%;
+	height: 100%;
+	z-index: 0;
+	background-color: $yi-light;
+}
+
+// 顶部栏
+.top-bar {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	padding: 32rpx;
+	position: relative;
+	z-index: 2;
+	background-color: #ffffff;
+	border-bottom-width: 6rpx;
+	border-bottom-style: solid;
+	border-bottom-color: #f0c000;
+}
+
+.back-btn {
+	width: 72rpx;
+	height: 72rpx;
+	border-radius: 36rpx;
+	background-color: #fff5e6;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+}
+
+.top-title {
+	flex: 1;
+	text-align: center;
+	font-weight: bold;
+	font-size: 36rpx;
+	color: #3d2800;
+}
+
+.placeholder-btn {
+	width: 72rpx;
+	height: 72rpx;
+}
+
+// 主内容区
+.main-content {
+	display: flex;
+	flex-direction: column;
+	padding: 32rpx;
+	max-width: 1000rpx;
+	margin: 0 auto;
+	position: relative;
+	z-index: 1;
+}
+
+// 分组标题
+.section-title {
+	font-size: 28rpx;
+	font-weight: bold;
+	color: #cc0000;
+	padding: 32rpx 24rpx 16rpx;
+	text-transform: uppercase;
+	letter-spacing: 2rpx;
+}
+
+// 设置分组容器
+.settings-section {
+	background-color: #ffffff;
+	border-radius: 48rpx;
+	margin-bottom: 32rpx;
+	overflow: hidden;
+	border-width: 6rpx;
+	border-style: solid;
+	border-color: #f0c000;
+}
+
+// 设置项
+.setting-item {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: center;
+	padding: 32rpx;
+	border-bottom-width: 2rpx;
+	border-bottom-style: solid;
+	border-bottom-color: rgba(240, 192, 0, 0.3);
+}
+
+.setting-item:last-child {
+	border-bottom-width: 0;
+}
+
+// 设置项标签
+.setting-label {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	flex: 1;
+	margin-right: 16rpx;
+}
+
+// 设置项图标
+.setting-icon {
+	width: 72rpx;
+	height: 72rpx;
+	border-radius: 20rpx;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	margin-right: 24rpx;
+	border-width: 4rpx;
+	border-style: solid;
+	border-color: #f0c000;
+	flex-shrink: 0;
+}
+
+
+.setting-icon.icon-blue {
+	background-color: #339af0;
+}
+
+.setting-icon.icon-green {
+	background-color: #2f9e44;
+}
+
+.setting-icon.icon-purple {
+	background-color: #862e9c;
+}
+
+.setting-icon.icon-yellow {
+	background-color: #fab005;
+}
+
+.setting-icon.icon-red {
+	background-color: #cc0000;
+}
+
+.setting-icon.icon-gray {
+	background-color: #495057;
+}
+
+.setting-icon.icon-orange {
+	background-color: #e8590c;
+}
+
+.setting-icon.icon-teal {
+	background-color: #0ca678;
+}
+
+// 设置项文本
+.setting-text {
+	font-size: 32rpx;
+	color: #3d2800;
+	font-weight: 500;
+	word-break: break-word;
+}
+
+.sound-switch__track {
+	background-color: #cccccc !important;
+}
+
+.sound-switch__track.is-checked {
+	background-color: #cc0000 !important;
+}
+
+.sound-switch__thumb {
+	background-color: #ffffff !important;
+}
+
+// 开关组件
+.toggle-switch {
+	position: relative;
+	width: 96rpx;
+	height: 48rpx;
+	flex-shrink: 0;
+}
+
+.toggle-slider {
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background-color: #cccccc;
+	border-radius: 24rpx;
+	transition: background-color 0.3s;
+}
+
+.toggle-slider.toggle-active {
+	background-color: #cc0000;
+}
+
+.toggle-thumb {
+	position: absolute;
+	height: 40rpx;
+	width: 40rpx;
+	left: 4rpx;
+	bottom: 4rpx;
+	background-color: #ffffff;
+	border-radius: 20rpx;
+	transition: transform 0.3s;
+}
+
+.toggle-active .toggle-thumb {
+	transform: translateX(48rpx);
+}
+
+// 退出登录容器
+.logout-container {
+	padding: 32rpx 0;
+}
+
+// 退出登录按钮
+.logout-button {
+	width: 100%;
+	padding: 32rpx;
+	background-color: #cc0000;
+	border-radius: 28rpx;
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	border-width: 4rpx;
+	border-style: solid;
+	border-color: #f0c000;
+}
+
+// 版本信息
+.version-info {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: center;
+	padding: 48rpx 0;
+}
+
+.version-text {
+	color: #666666;
+	font-size: 24rpx;
+	text-align: center;
+}
+
+// 底部占位
+.bottom-spacer {
+	height: 100rpx;
+}
+
+.change-pwd-modal {
+	padding: 32rpx;
+	background-color: #ffffff;
+	border-radius: 28rpx;
+}
+
+.change-pwd-title {
+	font-size: 32rpx;
+	font-weight: bold;
+	color: #3d2800;
+	margin-bottom: 24rpx;
+	display: block;
+}
+
+.change-pwd-form {
+	margin-bottom: 24rpx;
+}
+
+.change-pwd-actions {
+	display: flex;
+	flex-direction: row;
+	justify-content: flex-end;
+	gap: 16rpx;
+}
+
+.change-pwd-btn {
+	min-width: 180rpx;
+}
+</style>

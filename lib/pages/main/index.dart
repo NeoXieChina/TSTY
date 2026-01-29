@@ -2,17 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:tsty_app/components/common/YiBaseBackground.dart';
 import 'package:tsty_app/components/main/bottomNavigationBarCustom.dart';
 import 'package:tsty_app/constants/tabList.dart';
-import 'package:tsty_app/style/app_theme.dart';
 
-class MyApp extends StatefulWidget {
-  const MyApp({super.key});
+class MainPage extends StatefulWidget {
+  const MainPage({super.key});
 
   @override
-  State<MyApp> createState() => _MyAppState();
+  State<MainPage> createState() => _MainPageState();
 }
 
-class _MyAppState extends State<MyApp> {
-  final AppTheme appTheme = AppTheme();
+class _MainPageState extends State<MainPage> {
   int _currentIndex = 0;
 
   List<Widget> get pages => TabListConstant.tabList.map((tabItem) {
@@ -21,26 +19,22 @@ class _MyAppState extends State<MyApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'TSTY App',
-      theme: appTheme.light(),
-      home: Builder(
-        builder: (context) {
-          return Scaffold(
-            body: SafeArea(
-              child: YiBaseBackground(
-                child: IndexedStack(index: _currentIndex, children: pages),
-              ),
+    return Builder(
+      builder: (context) {
+        return Scaffold(
+          body: SafeArea(
+            child: YiBaseBackground(
+              child: IndexedStack(index: _currentIndex, children: pages),
             ),
-            bottomNavigationBar: BottomNavigationBarCustom(
-              currentIndex: _currentIndex,
-              onTap: (index) => setState(() {
-                _currentIndex = index;
-              }),
-            ),
-          );
-        },
-      ),
+          ),
+          bottomNavigationBar: BottomNavigationBarCustom(
+            currentIndex: _currentIndex,
+            onTap: (index) => setState(() {
+              _currentIndex = index;
+            }),
+          ),
+        );
+      },
     );
   }
 }
