@@ -1,0 +1,790 @@
+<template>
+	<cl-page :pt="{ className: 'page-bg' }">
+		<!-- 顶部安全区域 -->
+		<cl-topbar
+			fixed
+			:show-back="false"
+			safe-area-top
+			background-color="#c00"
+			:height="0"
+		></cl-topbar>
+
+		<!-- 彝族条纹装饰 -->
+		<yi-stripe position="left" :top="15" :segments="12" :opacity="0.7"></yi-stripe>
+		<yi-stripe position="right" :top="35" :segments="12" :opacity="0.7"></yi-stripe>
+
+		<!-- 头部外层容器（红色背景，带圆角） -->
+		<view class="profile-header-wrapper">
+			<!-- 个人信息内容区 -->
+			<view class="profile-header-content">
+				<!-- 今日学习状态提示 -->
+				<view class="today-status">
+					<cl-icon name="fire-fill" color="#f0c000" :size="32"></cl-icon>
+					<text class="status-text">今天学了10分钟，继续加油～</text>
+				</view>
+
+				<!-- 头像和用户信息 -->
+				<view class="avatar-section">
+					<view class="avatar-border">
+						<cl-avatar
+							src="/static/image/avatar01.png"
+							:size="150"
+							rounded
+						></cl-avatar>
+					</view>
+					<view class="user-details">
+						<text class="user-name">{{ userInfo.name }}</text>
+						<!-- 第一行：性别、年龄、年级 -->
+						<view class="user-info-tags">
+							<view class="info-tag">
+								<cl-icon :name="genderIconName" color="#f0c000" :size="24"></cl-icon>
+								<text class="tag-text">{{ userInfo.gender }}</text>
+							</view>
+							<view class="info-tag">
+								<cl-icon name="ri-cake-2-fill" color="#f0c000" :size="24"></cl-icon>
+								<text class="tag-text">{{ userInfo.age }}岁</text>
+							</view>
+							<view class="info-tag">
+								<cl-icon name="ri-book-fill" color="#f0c000" :size="24"></cl-icon>
+								<text class="tag-text">{{ userInfo.grade }}</text>
+							</view>
+						</view>
+						<!-- 第二行：学校 -->
+						<view class="user-info-tags">
+							<view class="info-tag school-tag">
+								<cl-icon name="ri-school-fill" color="#f0c000" :size="24"></cl-icon>
+								<text class="tag-text">{{ userInfo.school }}</text>
+							</view>
+						</view>
+						<view class="learning-days">
+							<cl-icon name="ri-calendar-check-fill" color="white" :size="28"></cl-icon>
+							<text class="days-text">连续学习：{{ userInfo.learningDays }}天</text>
+						</view>
+					</view>
+				</view>
+
+				<!-- 统计数据 -->
+				<view class="stats-area">
+					<view class="stat-item">
+						<text class="stat-value">{{ stats.completedLevels }}</text>
+						<text class="stat-label">已完成关卡</text>
+					</view>
+					<view class="stat-item">
+						<text class="stat-value">{{ stats.accuracy }}%</text>
+						<text class="stat-label">发音准确率</text>
+					</view>
+					<view class="stat-item">
+						<text class="stat-value">{{ stats.flowers }}</text>
+						<text class="stat-label">收集小红花</text>
+					</view>
+				</view>
+			</view>
+			<!-- 底部黄色边框层 -->
+			<view class="profile-header-border"></view>
+		</view>
+
+		<!-- 班级之星卡片 -->
+		<view class="stars-card">
+			<view class="stars-card-header">
+				<view class="stars-card-title">
+					<cl-icon name="vip-crown-2-fill" color="#f0c000" :size="36"></cl-icon>
+					<text class="title-text">班级之星</text>
+				</view>
+				<!-- 星星装饰 -->
+				<cl-icon name="star-fill" color="#f0c000" :size="32" class="star-deco"></cl-icon>
+			</view>
+
+			<view class="stars-grid">
+				<!-- 第二名 -->
+				<view class="star-profile star-second">
+					<view class="star-avatar-container">
+						<view class="star-avatar-border">
+							<cl-avatar
+								src="/static/image/avatar03.png"
+								:size="80"
+								rounded
+							></cl-avatar>
+						</view>
+						<view class="star-rank-medal medal-silver">
+							<text class="medal-text">2</text>
+						</view>
+					</view>
+					<text class="star-name">吾木</text>
+					<view class="star-score-badge">
+						<cl-icon name="heart-fill" color="white" :size="20"></cl-icon>
+						<text class="badge-text">85朵</text>
+					</view>
+				</view>
+
+				<!-- 第一名（居中突出） -->
+				<view class="star-profile star-first">
+					<view class="star-avatar-container avatar-first">
+						<view class="star-avatar-border-first">
+							<cl-avatar
+								src="/static/image/avatar02.png"
+								:size="90"
+								rounded
+							></cl-avatar>
+						</view>
+						<view class="star-rank-medal medal-gold">
+							<text class="medal-text">1</text>
+						</view>
+					</view>
+					<text class="star-name star-name-first">曲比</text>
+					<view class="star-score-badge badge-first">
+						<cl-icon name="heart-fill" color="white" :size="20"></cl-icon>
+						<text class="badge-text">96朵</text>
+					</view>
+				</view>
+
+				<!-- 第三名 -->
+				<view class="star-profile star-third">
+					<view class="star-avatar-container">
+						<view class="star-avatar-border">
+							<cl-avatar
+								src="/static/image/avatar04.png"
+								:size="75"
+								rounded
+							></cl-avatar>
+						</view>
+						<view class="star-rank-medal medal-bronze">
+							<text class="medal-text">3</text>
+						</view>
+					</view>
+					<text class="star-name">比尔玛</text>
+					<view class="star-score-badge">
+						<cl-icon name="heart-fill" color="white" :size="20"></cl-icon>
+						<text class="badge-text">78朵</text>
+					</view>
+				</view>
+			</view>
+		</view>
+
+		<!-- 菜单列表 -->
+		<view class="menu-section">
+			<view class="menu-item" @tap="toEditProfile">
+				<view class="menu-left">
+					<view class="menu-icon-bg">
+						<cl-icon name="user-fill" color="#c00" :size="36"></cl-icon>
+					</view>
+					<text class="menu-text">修改个人信息</text>
+				</view>
+				<cl-icon name="arrow-right-s-line" color="#3d2800" :size="36"></cl-icon>
+			</view>
+
+			<view class="menu-item menu-item-parent" @tap="toParentLogin">
+				<view class="menu-left">
+					<view class="menu-icon-bg icon-bg-parent">
+						<cl-icon name="shield-user-fill" color="white" :size="36"></cl-icon>
+					</view>
+					<text class="menu-text">家长入口</text>
+				</view>
+				<view class="parent-hint">
+					<text class="hint-text">查看学习报告</text>
+					<cl-icon name="arrow-right-s-line" color="#3d2800" :size="36"></cl-icon>
+				</view>
+			</view>
+
+			<view class="menu-item" @tap="toSettings">
+				<view class="menu-left">
+					<view class="menu-icon-bg">
+						<cl-icon name="settings-fill" color="#c00" :size="36"></cl-icon>
+					</view>
+					<text class="menu-text">设置</text>
+				</view>
+				<cl-icon name="arrow-right-s-line" color="#3d2800" :size="36"></cl-icon>
+			</view>
+		</view>
+
+		<!-- 底部占位 -->
+		<view class="bottom-spacer"></view>
+
+		<tabbar></tabbar>
+	</cl-page>
+</template>
+
+<script lang="ts" setup>
+import { computed, ref } from "vue";
+import { request, router, useStore } from "@/cool";
+import { useUi } from "@/uni_modules/cool-ui";
+import Tabbar from "@/components/tabbar.uvue";
+import YiStripe from "@/components/yi-stripe.uvue";
+
+const { user } = useStore();
+const ui = useUi();
+
+// 用户信息类型
+type UserInfo = {
+	name: string;
+	gender: string;
+	age: number;
+	grade: string;
+	school: string;
+	learningDays: number;
+};
+
+// 用户信息
+const userInfo = ref<UserInfo>({
+	name: "阿依彝",
+	gender: "女生",
+	age: 4,
+	grade: "中班",
+	school: "向阳幼儿园二班",
+	learningDays: 15
+});
+
+const genderIconName = computed<string>(() => {
+	const g = userInfo.value.gender;
+	return g.includes("男") ? "ri-men-line" : "ri-women-line";
+});
+
+// 统计数据类型
+type Stats = {
+	completedLevels: number;
+	accuracy: number;
+	flowers: number;
+};
+
+// 统计数据
+const stats = ref<Stats>({
+	completedLevels: 42,
+	accuracy: 89,
+	flowers: 78
+});
+
+type ChildProfileClassInfo = {
+	classId: string;
+	className: string;
+	grade: string;
+	teacherName: string;
+};
+
+type ChildProfileStats = {
+	totalStars: number;
+	completedLevels: number;
+	totalLearningMinutes: number;
+	consecutiveDays: number;
+	accuracy?: number;
+};
+
+type ChildProfileData = {
+	childId: string;
+	username: string;
+	nickname: string;
+	fullName: string;
+	gender: string;
+	birthDate: string;
+	ageYears: number;
+	classInfo: ChildProfileClassInfo;
+	stats: ChildProfileStats;
+};
+
+function calcAgeYears(birthDate: string): number {
+	if (birthDate == '') {
+		return 0;
+	}
+
+	const bd = new Date(birthDate);
+	if (isNaN(bd.getTime())) {
+		return 0;
+	}
+
+	const now = new Date();
+	let age = now.getFullYear() - bd.getFullYear();
+	const m = now.getMonth() - bd.getMonth();
+	if (m < 0 || (m == 0 && now.getDate() < bd.getDate())) {
+		age = age - 1;
+	}
+
+	return age < 0 ? 0 : age;
+}
+
+
+async function loadProfile(): Promise<void> {
+	if (user.token == null) {
+		return;
+	}
+
+	try {
+		const data = await request<UTSJSONObject>({
+			url: "/api/v1/child/profile",
+			method: "GET"
+		});
+
+		const nickname = data["nickname"] as string | null;
+		userInfo.value.name = nickname != null && nickname != "" ? nickname : "";
+
+		const gender = data["gender"] as string | null;
+		userInfo.value.gender = gender == "male" ? "男生" : "女生";
+
+		const birthDate = data["birthDate"] as string | null;
+		userInfo.value.age = calcAgeYears(birthDate != null ? birthDate : "");
+
+		const classInfo = data["classInfo"] as UTSJSONObject | null;
+		if (classInfo != null) {
+			const grade = classInfo["grade"] as string | null;
+			const className = classInfo["className"] as string | null;
+			userInfo.value.grade = grade != null ? grade : "";
+			userInfo.value.school = className != null ? className : "";
+		} else {
+			userInfo.value.grade = "";
+			userInfo.value.school = "";
+		}
+
+		const statsObj = data["stats"] as UTSJSONObject | null;
+		if (statsObj != null) {
+			const consecutiveDays = statsObj["consecutiveDays"] as number | null;
+			userInfo.value.learningDays = consecutiveDays != null ? consecutiveDays : 0;
+
+			const completedLevels = statsObj["completedLevels"] as number | null;
+			stats.value.completedLevels = completedLevels != null ? completedLevels : 0;
+
+			const totalStars = statsObj["totalStars"] as number | null;
+			stats.value.flowers = totalStars != null ? totalStars : 0;
+
+			const accuracy = statsObj["accuracy"] as number | null;
+			if (accuracy != null) {
+				stats.value.accuracy = accuracy;
+			}
+		} else {
+			userInfo.value.learningDays = 0;
+			stats.value.completedLevels = 0;
+			stats.value.flowers = 0;
+		}
+	} catch (err) {
+		let errorMessage: string | null = null;
+
+		if (err instanceof Error) {
+			errorMessage = err.message;
+		}
+
+		try {
+			const errObj = JSON.parse(JSON.stringify(err)) as UTSJSONObject;
+			if (errObj["message"] != null) {
+				errorMessage = errObj["message"] as string;
+			}
+		} catch (_) {
+			// ignore
+		}
+
+		ui.showToast({
+			message: errorMessage != null ? errorMessage : "获取个人信息失败"
+		});
+	} finally {
+		uni.stopPullDownRefresh();
+	}
+}
+
+// 跳转到编辑个人信息
+function toEditProfile() {
+	router.to("/pages/user/edit-profile");
+}
+
+// 跳转到家长登录
+function toParentLogin() {
+	router.to("/pages/user/parent-login");
+}
+
+// 跳转到设置
+function toSettings() {
+	router.to("/pages/set/index");
+}
+
+onReady(() => {
+	loadProfile();
+});
+
+onPullDownRefresh(() => {
+	loadProfile();
+});
+</script>
+
+<style lang="scss">
+/* 页面背景 */
+.page-bg {
+	background-color: $yi-light;
+}
+
+/* 头部外层容器（红色背景，带圆角） */
+.profile-header-wrapper {
+	background-color: $yi-red;
+	border-bottom-left-radius: 24px;
+	border-bottom-right-radius: 24px;
+	margin-bottom: 24px;
+	overflow: hidden;
+}
+
+/* 个人信息内容区 */
+.profile-header-content {
+	padding: 0 16px 24px;
+}
+
+/* 底部黄色边框层：贴合外层圆角 */
+.profile-header-border {
+	width: 100%;
+	height: 4px;
+	background-color: $yi-yellow;
+	border-bottom-left-radius: 24px;
+	border-bottom-right-radius: 24px;
+}
+
+/* 今日学习状态 */
+.today-status {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	background-color: rgba(255, 255, 255, 0.2);
+	padding: 8px 16px;
+	border-radius: 16px;
+	margin-bottom: 16px;
+	margin-top: 16px;
+}
+
+.status-text {
+	font-size: 14px;
+	color: white;
+	margin-left: 8px;
+}
+
+/* 头像区域 */
+.avatar-section {
+	display: flex;
+	flex-direction: row;
+	align-items: flex-start;
+	margin-bottom: 16px;
+}
+
+/* 用户头像边框容器 */
+.avatar-border {
+	border-width: 6px;
+	border-style: solid;
+	border-color: $yi-yellow;
+	border-radius: 100px;
+	margin-right: 16px;
+	overflow: hidden;
+}
+
+.user-details {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+}
+
+.user-name {
+	font-size: 20px;
+	font-weight: bold;
+	color: white;
+	margin-bottom: 8px;
+}
+
+.user-info-tags {
+	display: flex;
+	flex-direction: row;
+	flex-wrap: wrap;
+	margin-bottom: 4px;
+}
+
+.info-tag {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	background-color: rgba(255, 255, 255, 0.15);
+	padding: 4px 8px;
+	border-radius: 16px;
+	margin-right: 4px;
+	margin-bottom: 4px;
+	border-width: 1px;
+	border-style: solid;
+	border-color: rgba(255, 255, 255, 0.2);
+}
+
+.tag-text {
+	font-size: 12px;
+	color: white;
+	margin-left: 4px;
+}
+
+.learning-days {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	background-color: rgba(0, 0, 0, 0.15);
+	padding: 4px 8px;
+	border-radius: 8px;
+	margin-top: 8px;
+	width: 140px;
+}
+
+.days-text {
+	font-size: 14px;
+	color: white;
+	margin-left: 4px;
+}
+
+/* 统计区域 */
+.stats-area {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-around;
+	margin-top: 24px;
+	padding-top: 24px;
+	border-top-width: 2px;
+	border-top-style: dashed;
+	border-top-color: rgba(255, 255, 255, 0.3);
+}
+
+.stat-item {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	flex: 1;
+	background-color: rgba(0, 0, 0, 0.1);
+	border-radius: 8px;
+	padding: 8px 0;
+	margin: 0 4px;
+}
+
+.stat-value {
+	font-size: 28px;
+	font-weight: bold;
+	color: white;
+	margin-bottom: 4px;
+}
+
+.stat-label {
+	font-size: 12px;
+	color: rgba(255, 255, 255, 0.9);
+}
+
+/* 班级之星卡片 */
+.stars-card {
+	background-color: white;
+	border-radius: 16px;
+	padding: 16px;
+	margin: 0 16px 24px;
+	border-width: 4px;
+	border-style: solid;
+	border-color: $yi-yellow;
+	position: relative;
+	overflow: visible;
+}
+
+.stars-card-header {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	justify-content: space-between;
+	margin-bottom: 16px;
+}
+
+.stars-card-title {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+}
+
+.title-text {
+	font-size: 16px;
+	font-weight: bold;
+	color: #3d2800;
+	margin-left: 8px;
+}
+
+/* 星星装饰 */
+.star-deco {
+	opacity: 0.4;
+}
+
+.stars-grid {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-around;
+	align-items: flex-end;
+	overflow: visible;
+}
+
+.star-profile {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	width: 90px;
+	overflow: visible;
+}
+
+/* 第二名和第三名 */
+.star-second,
+.star-third {
+	margin-top: 16px;
+}
+
+/* 第一名突出显示 */
+.star-first {
+	margin-top: 0;
+}
+
+.star-avatar-container {
+	position: relative;
+	margin-bottom: 8px;
+	overflow: visible;
+}
+
+/* 第一名头像更大 */
+.avatar-first {
+	margin-bottom: 10px;
+}
+
+/* 班级之星头像边框容器 */
+.star-avatar-border {
+	border-width: 3px;
+	border-style: solid;
+	border-color: #fff5e6;
+	border-radius: 100px;
+	overflow: hidden;
+}
+
+/* 第一名头像边框容器 */
+.star-avatar-border-first {
+	border-width: 4px;
+	border-style: solid;
+	border-color: $yi-yellow;
+	border-radius: 100px;
+	overflow: hidden;
+}
+
+.star-rank-medal {
+	position: absolute;
+	top: -8px;
+	left: -8px;
+	width: 24px;
+	height: 24px;
+	border-radius: 12px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	border-width: 1px;
+	border-style: solid;
+	border-color: rgba(255, 255, 255, 0.8);
+}
+
+.medal-gold {
+	background-color: #ffd700;
+}
+
+.medal-silver {
+	background-color: #c0c0c0;
+}
+
+.medal-bronze {
+	background-color: #cd7f32;
+}
+
+.medal-text {
+	font-size: 12px;
+	font-weight: bold;
+	color: white;
+}
+
+.star-name {
+	font-size: 14px;
+	font-weight: bold;
+	color: #3d2800;
+	margin-bottom: 4px;
+}
+
+/* 第一名名字更大 */
+.star-name-first {
+	font-size: 16px;
+}
+
+.star-score-badge {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+	background-color: $yi-red;
+	padding: 2px 8px;
+	border-radius: 8px;
+  overflow: visible;
+}
+
+/* 第一名徽章更大 */
+.badge-first {
+	padding: 4px 10px;
+}
+
+.badge-text {
+	font-size: 11px;
+	font-weight: bold;
+	color: white;
+	margin-left: 2px;
+}
+
+/* 菜单区域 */
+.menu-section {
+	padding: 0 16px;
+}
+
+.menu-item {
+	display: flex;
+	flex-direction: row;
+	justify-content: space-between;
+	align-items: center;
+	padding: 16px;
+	background-color: rgba(255, 255, 255, 0.85);
+	border-radius: 16px;
+	margin-bottom: 8px;
+	border-width: 2px;
+	border-style: dashed;
+	border-color: $yi-yellow;
+}
+
+.menu-item-parent {
+	background-color: rgba(255, 255, 255, 0.95);
+	border-width: 2px;
+	border-style: solid;
+	border-color: $yi-red;
+}
+
+.menu-left {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+}
+
+.menu-icon-bg {
+	width: 38px;
+	height: 38px;
+	border-radius: 8px;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 8px;
+	background-color: $yi-yellow;
+}
+
+.icon-bg-parent {
+	background-color: $yi-red;
+}
+
+.menu-text {
+	font-size: 16px;
+	font-weight: bold;
+	color: #3d2800;
+}
+
+.parent-hint {
+	display: flex;
+	flex-direction: row;
+	align-items: center;
+}
+
+.hint-text {
+	font-size: 14px;
+	color: #999;
+	margin-right: 4px;
+}
+
+/* 底部占位 */
+.bottom-spacer {
+	height: 100px;
+}
+</style>
