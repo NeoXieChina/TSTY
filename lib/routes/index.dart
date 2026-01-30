@@ -1,5 +1,6 @@
 // 路由管理
 import 'package:flutter/material.dart';
+import 'package:tsty_app/pages/learn/level_detail.dart';
 import 'package:tsty_app/pages/mine/edit_profile.dart';
 import 'package:tsty_app/pages/mine/parent_entry.dart';
 import 'package:tsty_app/pages/settings/index.dart';
@@ -23,6 +24,9 @@ Map<String, Widget Function(BuildContext)> getRootRoutes() {
     "/settings": (context) => const SettingsPage(),
     "/mine/edit-profile": (context) => const EditProfilePage(),
     "/mine/parent-entry": (context) => const ParentEntryPage(),
+    "/learn/level-detail": (context) => LevelDetailPage.fromArgs(
+          ModalRoute.of(context)?.settings.arguments,
+        ),
     //"/login": (context) => LoginPage(), // 登录页路由
   };
 }

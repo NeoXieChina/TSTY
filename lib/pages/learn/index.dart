@@ -205,37 +205,54 @@ class _LevelNodePositioned extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final canTap =
+        level.status == _LevelStatus.unlocked || level.status == _LevelStatus.passed;
+
     return Positioned(
       left: left,
       top: top,
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          SizedBox(
-            width: size,
-            height: size,
-            child: Stack(
-              clipBehavior: Clip.none,
-              children: [
-                Positioned.fill(
-                  child: Image.asset(_assetPath, fit: BoxFit.contain),
-                ),
-                Positioned(
-                  left: 0,
-                  right: 0,
-                  bottom: -2,
-                  child: Center(
-                    child: Text(
-                      '${level.id}',
-                      style: const TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w800,
-                        color: Colors.black87,
+          InkWell(
+            onTap: canTap
+                ? () {
+                    Navigator.of(context).pushNamed(
+                      '/learn/level-detail',
+                      arguments: {
+                        'levelIndex': level.id,
+                        'totalLevels': 23,
+                      },
+                    );
+                  }
+                : null,
+            borderRadius: BorderRadius.circular(18),
+            child: SizedBox(
+              width: size,
+              height: size,
+              child: Stack(
+                clipBehavior: Clip.none,
+                children: [
+                  Positioned.fill(
+                    child: Image.asset(_assetPath, fit: BoxFit.contain),
+                  ),
+                  Positioned(
+                    left: 0,
+                    right: 0,
+                    bottom: -2,
+                    child: Center(
+                      child: Text(
+                        '${level.id}',
+                        style: const TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.black87,
+                        ),
                       ),
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
           if (level.status == _LevelStatus.passed && level.flowers > 0)
