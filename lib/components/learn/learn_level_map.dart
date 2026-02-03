@@ -7,11 +7,13 @@ enum LearnLevelStatus { locked, unlocked, passed }
 
 class LearnLevelData {
   final int id;
+  final String? levelId;
   final LearnLevelStatus status;
   final int flowers;
 
   const LearnLevelData({
     required this.id,
+    this.levelId,
     required this.status,
     this.flowers = 0,
   });
