@@ -26,11 +26,11 @@ class LevelDetailCard extends StatelessWidget {
   Widget build(BuildContext context) {
     final red = Theme.of(context).colorScheme.primary;
     final yellow = AppTheme.yiYellow.value;
-    const radius = 18.0;
+    const radius = 24.0;
 
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(18),
+      //padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
         borderRadius: BorderRadius.circular(radius),
@@ -127,13 +127,13 @@ class LevelDetailCard extends StatelessWidget {
                 ),
               ),
               const SizedBox(height: 10),
-              _HintImage(
-                asset: hintImageAsset,
-                label: hintLabel,
-              ),
+              _HintImage(asset: hintImageAsset, label: hintLabel),
               const SizedBox(height: 12),
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 16,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: const Color(0xFFFFF5E6).withValues(alpha: 0.70),
                   borderRadius: BorderRadius.circular(16),
@@ -211,7 +211,13 @@ class _HintImage extends StatelessWidget {
         child: Stack(
           fit: StackFit.expand,
           children: [
-            Image.asset(asset, fit: BoxFit.cover),
+            Image.asset(
+              asset,
+              fit: BoxFit.cover,
+              errorBuilder: (context, error, stackTrace) {
+                return Image.asset('lib/assets/father.webp', fit: BoxFit.cover);
+              },
+            ),
             Align(
               alignment: Alignment.bottomCenter,
               child: Container(
@@ -272,7 +278,8 @@ class _AnimatedCircleActionButton extends StatefulWidget {
       _AnimatedCircleActionButtonState();
 }
 
-class _AnimatedCircleActionButtonState extends State<_AnimatedCircleActionButton> {
+class _AnimatedCircleActionButtonState
+    extends State<_AnimatedCircleActionButton> {
   bool _pressed = false;
 
   void _setPressed(bool v) {

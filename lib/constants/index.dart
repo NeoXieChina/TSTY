@@ -9,7 +9,11 @@ class GlobalConstants {
 
 // HTTP 接口常量
 class HttpConstants {
+  // 获取单元进度接口
   static const String unitProgress = "/api/v1/learning/units/{unitId}/progress";
+  // 获取关卡详情接口
+  static const String levelDetails =
+      "/api/v1/learning/levels/{levelId}/content";
 }
 
 // 单元UnitId常量

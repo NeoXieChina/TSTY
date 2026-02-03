@@ -18,8 +18,10 @@ class _LearnPageState extends State<LearnPage> {
   String _currentUnitId = UnitConstants.initialUnitId;
   int _totalLevels = 23;
   List<LearnLevelData> _levelData = const [];
-  List<LearnUnitProgress> _unitProgressCache =
-      List<LearnUnitProgress>.generate(4, (_) => const LearnUnitProgress(completed: 0, total: 0));
+  List<LearnUnitProgress> _unitProgressCache = List<LearnUnitProgress>.generate(
+    4,
+    (_) => const LearnUnitProgress(completed: 0, total: 0),
+  );
 
   Future<UnitProgressResponse> _getLevels(String unitId) async {
     return await getUnitProgressAPI(unitId);
@@ -147,15 +149,58 @@ class _LearnPageState extends State<LearnPage> {
               : LearnLevelMap(
                   levels: _levelData,
                   onLevelTap: (level) {
-                    Navigator.of(context).pushNamed(
-                      '/learn/level-detail',
-                      arguments: {
-                        'unitId': _currentUnitId,
-                        'levelId': level.levelId,
-                        'levelIndex': level.id,
-                        'totalLevels': _totalLevels,
-                      },
-                    );
+                    () async {
+                      final localContext = context;
+                      final levelId = level.levelId;
+                      if (levelId == null || levelId.isEmpty) return;
+
+                      final rootNavigator = Navigator.of(
+                        localContext,
+                        rootNavigator: true,
+                      );
+                      showDialog<void>(
+                        context: localContext,
+                        barrierDismissible: false,
+                        builder: (context) {
+                          return const Center(
+                            child: CircularProgressIndicator(),
+                          );
+                        },
+                      );
+
+                      try {
+                        final content = await getLevelDetailsAPI(levelId);
+                        if (!localContext.mounted) return;
+
+                        if (rootNavigator.mounted && rootNavigator.canPop()) {
+                          rootNavigator.pop();
+                        }
+
+                        Navigator.of(localContext).pushNamed(
+                          '/learn/level-detail',
+                          arguments: {
+                            'unitId': _currentUnitId,
+                            'levelId': levelId,
+                            'levelIndex': level.id,
+                            'totalLevels': _totalLevels,
+                            'levelContent': content,
+                            'levelIds': _levelData
+                                .map((e) => e.levelId ?? '')
+                                .toList(growable: false),
+                          },
+                        );
+                      } catch (_) {
+                        if (!localContext.mounted) return;
+
+                        if (rootNavigator.mounted && rootNavigator.canPop()) {
+                          rootNavigator.pop();
+                        }
+
+                        ScaffoldMessenger.of(localContext).showSnackBar(
+                          const SnackBar(content: Text('获取关卡详情失败')),
+                        );
+                      }
+                    }();
                   },
                 ),
         ),
