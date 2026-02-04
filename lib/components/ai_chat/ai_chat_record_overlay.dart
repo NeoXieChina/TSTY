@@ -8,6 +8,7 @@ class AiChatRecordOverlay extends StatefulWidget {
   final bool isRecording;
   final bool isDisabled;
   final int recordSeconds;
+  final double? amplitude;
   final VoidCallback onRecordStart;
   final VoidCallback onRecordEnd;
 
@@ -16,6 +17,7 @@ class AiChatRecordOverlay extends StatefulWidget {
     required this.isRecording,
     required this.isDisabled,
     required this.recordSeconds,
+    this.amplitude,
     required this.onRecordStart,
     required this.onRecordEnd,
   });
@@ -39,7 +41,11 @@ class _AiChatRecordOverlayState extends State<AiChatRecordOverlay> {
     );
 
     if (widget.isRecording) {
-      _startWave();
+      if (widget.amplitude == null) {
+        _startWave();
+      } else {
+        _setBarsByAmplitude(widget.amplitude!);
+      }
     }
   }
 
@@ -49,11 +55,40 @@ class _AiChatRecordOverlayState extends State<AiChatRecordOverlay> {
 
     if (oldWidget.isRecording != widget.isRecording) {
       if (widget.isRecording) {
-        _startWave();
+        if (widget.amplitude == null) {
+          _startWave();
+        } else {
+          _stopWave();
+          _setBarsByAmplitude(widget.amplitude!);
+        }
       } else {
         _stopWave();
       }
     }
+
+    if (widget.isRecording && widget.amplitude != null) {
+      if (oldWidget.amplitude != widget.amplitude) {
+        _stopWave();
+        _setBarsByAmplitude(widget.amplitude!);
+      }
+    }
+  }
+
+  void _setBarsByAmplitude(double a) {
+    final amp = a.clamp(0.0, 1.0);
+    const factors = [0.55, 0.78, 1.0, 0.70, 0.92, 0.66, 0.48];
+    setState(() {
+      _bars = List.generate(factors.length, (i) {
+        final h = 10 + amp * 42 * factors[i];
+        Color c = const Color(0xFFC00003);
+        if (h > 35) {
+          c = const Color(0xFFFF5722);
+        } else if (h > 25) {
+          c = const Color(0xFFFFC107);
+        }
+        return _WaveBar(height: h, color: c);
+      });
+    });
   }
 
   void _startWave() {

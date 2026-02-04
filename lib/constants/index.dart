@@ -5,6 +5,9 @@ class GlobalConstants {
   static const String apiBaseUrl = "http://127.0.0.1:8080";
   static const Duration timeoutDuration = Duration(seconds: 10);
   static const int successState = 0;
+
+  static const String xfyunIseEndpoint = "wss://ise-api.xfyun.cn/v2/open-ise";
+  static const String xfyunIseAppId = "";
 }
 
 // HTTP 接口常量
@@ -14,6 +17,8 @@ class HttpConstants {
   // 获取关卡详情接口
   static const String levelDetails =
       "/api/v1/learning/levels/{levelId}/content";
+
+  static const String iseAuth = "/api/v1/learning/ise/auth";
 }
 
 // 单元UnitId常量

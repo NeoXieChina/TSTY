@@ -1,5 +1,7 @@
 // 封装dio
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
+import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import 'package:tsty_app/constants/index.dart';
 
 class DioUtils {
@@ -11,7 +13,28 @@ class DioUtils {
       ..connectTimeout = GlobalConstants.timeoutDuration
       ..receiveTimeout = GlobalConstants.timeoutDuration;
 
+    // 添加日志拦截器
+    _addLogsInterceptor();
+
+    // 添加通用拦截器
     _addInterceptors();
+  }
+
+  void _addLogsInterceptor() {
+    // 仅在DEBUG模式添加接口日志拦截器，RELEASE模式移除
+    if (kDebugMode) {
+      _dio.interceptors.add(
+        PrettyDioLogger(
+          requestHeader: true, // 打印请求头
+          requestBody: true, // 打印请求参数
+          responseBody: true, // 打印响应数据
+          responseHeader: false, // 不打印响应头
+          error: true, // 打印错误信息
+          compact: false, // 格式化打印（非紧凑模式）
+          maxWidth: 120, // 每行最大长度
+        ),
+      );
+    }
   }
 
   void _addInterceptors() {
@@ -33,13 +56,31 @@ class DioUtils {
     );
   }
 
-  Future<dynamic> get(String url, {Map<String, dynamic>? params}) async {
-    return _handleRequest(await _dio.get(url, queryParameters: params));
+  Future<dynamic> get(
+    String url, {
+    Map<String, dynamic>? params,
+    Map<String, dynamic>? headers,
+  }) async {
+    return _handleRequest(
+      await _dio.get(
+        url,
+        queryParameters: params,
+        options: headers == null ? null : Options(headers: headers),
+      ),
+    );
   }
 
-  Future<dynamic> post(String url, {Map<String, dynamic>? data}) async {
+  Future<dynamic> post(
+    String url, {
+    Map<String, dynamic>? data,
+    Map<String, dynamic>? headers,
+  }) async {
     try {
-      Response response = await _dio.post(url, data: data);
+      Response response = await _dio.post(
+        url,
+        data: data,
+        options: headers == null ? null : Options(headers: headers),
+      );
       return response.data;
     } catch (e) {
       throw Exception('POST请求出错: $e');

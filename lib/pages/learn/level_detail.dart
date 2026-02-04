@@ -1,14 +1,22 @@
+import 'dart:async';
+
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:audioplayers/audioplayers.dart';
 import 'package:flutter/services.dart';
 import 'package:tsty_app/api/learn.dart';
+import 'package:tsty_app/api/ise.dart';
 import 'package:tsty_app/components/common/YiSun.dart';
 import 'package:tsty_app/components/learn/level_detail/level_detail_card.dart';
 import 'package:tsty_app/components/learn/level_detail/level_detail_evaluate_card.dart';
 import 'package:tsty_app/components/learn/level_detail/level_detail_eval_dialog.dart';
 import 'package:tsty_app/components/learn/level_detail/level_detail_header.dart';
+import 'package:tsty_app/constants/index.dart';
 import 'package:tsty_app/style/app_theme.dart';
 import 'package:tsty_app/utils/ToastUtils.dart';
+import 'package:tsty_app/utils/yi_recorder.dart';
+import 'package:tsty_app/utils/yi_speech_evaluator.dart';
+import 'package:tsty_app/utils/user_prefs.dart';
 import 'package:tsty_app/viewmodels/learn.dart';
 
 String _formatPinyinForDisplay(String input) {
@@ -88,6 +96,11 @@ bool _isShengmuContent(LevelContent content) {
   return s.contains('shengmu') || content.contentType.contains('声母');
 }
 
+bool _isWordContent(LevelContent content) {
+  final s = content.contentType.trim().toLowerCase();
+  return s.contains('word') || content.contentType.contains('词语');
+}
+
 String _shengmuAssetKey(String raw) {
   return raw.trim().toLowerCase();
 }
@@ -107,6 +120,7 @@ class LevelDetailPage extends StatefulWidget {
   final String? levelId;
   final LevelContent? levelContent;
   final List<String>? levelIds;
+  final YiIseAuthQuery? iseAuthQuery;
 
   const LevelDetailPage({
     super.key,
@@ -116,6 +130,7 @@ class LevelDetailPage extends StatefulWidget {
     this.levelId,
     this.levelContent,
     this.levelIds,
+    this.iseAuthQuery,
   });
 
   static LevelDetailPage fromArgs(Object? args) {
@@ -126,6 +141,26 @@ class LevelDetailPage extends StatefulWidget {
       final levelId = args['levelId'];
       final levelContent = args['levelContent'];
       final levelIds = args['levelIds'];
+      final iseAuth = args['iseAuth'];
+
+      YiIseAuthQuery? authQuery;
+      if (iseAuth is Map) {
+        final authorization = iseAuth['authorization']?.toString();
+        final host = iseAuth['host']?.toString();
+        final date = iseAuth['date']?.toString();
+        if (authorization != null &&
+            authorization.isNotEmpty &&
+            host != null &&
+            host.isNotEmpty &&
+            date != null &&
+            date.isNotEmpty) {
+          authQuery = YiIseAuthQuery(
+            authorization: authorization,
+            host: host,
+            date: date,
+          );
+        }
+      }
 
       final parsedLevelIds = levelIds is List
           ? levelIds
@@ -140,6 +175,7 @@ class LevelDetailPage extends StatefulWidget {
         levelId: levelId is String ? levelId : null,
         levelContent: levelContent is LevelContent ? levelContent : null,
         levelIds: parsedLevelIds,
+        iseAuthQuery: authQuery,
       );
     }
     return const LevelDetailPage();
@@ -155,6 +191,8 @@ class _LevelDetailPageState extends State<LevelDetailPage> {
   List<String> _levelIds = const [];
 
   final AudioPlayer _audioPlayer = AudioPlayer();
+  final YiRecorderController _recorder = YiRecorderController();
+  StreamSubscription<Duration>? _recordDurationSub;
 
   bool _recording = false;
   String _recordStatus = '长按录音，学说 "b"';
@@ -167,6 +205,19 @@ class _LevelDetailPageState extends State<LevelDetailPage> {
 
   LevelContent? _content;
   int _tipIndex = 0;
+  int _lastScore = 92;
+
+  Future<IseAuthCache?> _ensureIseAuth() async {
+    final cached = await UserPrefs.getIseAuthCache();
+    if (cached != null) return cached;
+    try {
+      final auth = await getIseAuthAPI();
+      await UserPrefs.setIseAuthCache(auth);
+      return auth;
+    } catch (_) {
+      return null;
+    }
+  }
 
   @override
   void initState() {
@@ -180,6 +231,9 @@ class _LevelDetailPageState extends State<LevelDetailPage> {
   @override
   void dispose() {
     _audioPlayer.dispose();
+    _recordDurationSub?.cancel();
+    _recordDurationSub = null;
+    _recorder.dispose();
     super.dispose();
   }
 
@@ -201,6 +255,7 @@ class _LevelDetailPageState extends State<LevelDetailPage> {
     if (content == null) return;
 
     _tipIndex = 0;
+    _lastScore = 92;
     _character = content.contentValue;
     _pinyin = _formatPinyinForDisplay(content.pinyinText);
     _hintImage = 'lib/assets/father.webp';
@@ -259,10 +314,43 @@ class _LevelDetailPageState extends State<LevelDetailPage> {
 
   void _startRecording() {
     if (_recording) return;
-    setState(() {
-      _recording = true;
-      _recordStatus = '正在录音中...';
-    });
+    () async {
+      try {
+        if (!mounted) return;
+        setState(() {
+          _recording = true;
+          _recordStatus = '正在录音中...';
+        });
+
+        _recordDurationSub?.cancel();
+        _recordDurationSub = _recorder.durationStream.listen((d) {
+          if (!mounted) return;
+          if (!_recording) return;
+          final ms = d.inMilliseconds;
+          final sec = (ms / 1000).toStringAsFixed(1);
+          setState(() {
+            _recordStatus = '正在录音中... $sec s';
+          });
+        });
+
+        await _recorder.start(
+          config: const YiRecorderConfig(
+            format: YiRecorderFormat.wav,
+            sampleRate: 16000,
+            numChannels: 1,
+          ),
+        );
+      } catch (_) {
+        _recordDurationSub?.cancel();
+        _recordDurationSub = null;
+        if (!mounted) return;
+        setState(() {
+          _recording = false;
+          _recordStatus = '长按录音，学说 "$_character"';
+        });
+        ToastUtils.showToast(context, '录音失败');
+      }
+    }();
   }
 
   Future<void> _showEvaluateDialog() async {
@@ -270,11 +358,27 @@ class _LevelDetailPageState extends State<LevelDetailPage> {
       context: context,
       barrierDismissible: false,
       builder: (context) {
+        final score = _lastScore.clamp(0, 100).toInt();
+        final stars = score >= 90
+            ? 3
+            : score >= 75
+                ? 2
+                : score >= 60
+                    ? 1
+                    : 0;
+        final flowers = stars;
+        final accuracyText = score >= 90
+            ? '太棒了！'
+            : score >= 75
+                ? '不错哦！'
+                : score >= 60
+                    ? '继续加油！'
+                    : '再试一次！';
         return LevelDetailEvalDialog(
-          score: 92,
-          accuracyText: '太棒了！',
-          stars: 3,
-          flowers: 3,
+          score: score,
+          accuracyText: accuracyText,
+          stars: stars,
+          flowers: flowers,
           points: const [
             LevelEvalPoint(success: true, text: '声调准确'),
             LevelEvalPoint(success: true, text: '发音清晰'),
@@ -298,14 +402,103 @@ class _LevelDetailPageState extends State<LevelDetailPage> {
   Future<void> _stopRecording() async {
     if (!_recording) return;
 
+    _recordDurationSub?.cancel();
+    _recordDurationSub = null;
+
+    YiRecorderResult? recordResult;
+    try {
+      recordResult = await _recorder.stop();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _recording = false;
+        _recordStatus = '长按录音，学说 "$_character"';
+      });
+      ToastUtils.showToast(context, '录音结束失败');
+      return;
+    }
+
     setState(() {
       _recording = false;
       _recordStatus = '录音结束，正在测评...';
     });
 
-    await Future<void>.delayed(const Duration(milliseconds: 800));
-    if (!mounted) return;
+    final content = _content;
+    if (recordResult == null || content == null) {
+      await Future<void>.delayed(const Duration(milliseconds: 800));
+      if (!mounted) return;
+      await _showEvaluateDialog();
+      if (!mounted) return;
+      setState(() {
+        _recordStatus = '长按录音，学说 "$_character"';
+      });
+      return;
+    }
 
+    if (kIsWeb) {
+      if (!mounted) return;
+      ToastUtils.showToast(context, 'Web 暂不支持语音测评');
+      await _showEvaluateDialog();
+
+      if (!mounted) return;
+      setState(() {
+        _recordStatus = '长按录音，学说 "$_character"';
+      });
+      return;
+    }
+
+    final endpoint = Uri.parse(GlobalConstants.xfyunIseEndpoint);
+    final authCache = await _ensureIseAuth();
+    if (authCache == null) {
+      if (!mounted) return;
+      setState(() {
+        _lastScore = 0;
+      });
+      ToastUtils.showToast(context, '获取语音测评鉴权失败');
+      await _showEvaluateDialog();
+
+      if (!mounted) return;
+      setState(() {
+        _recordStatus = '长按录音，学说 "$_character"';
+      });
+      return;
+    }
+
+    final authQuery = YiIseAuthQuery(
+      authorization: authCache.authorization,
+      host: authCache.host,
+      date: authCache.date,
+    );
+    final appId = authCache.appId;
+    final category = _isWordContent(content) ? 'read_word' : 'read_syllable';
+    final evaluator = YiIseEvaluator(
+      YiIseConfig(
+        endpoint: endpoint,
+        appId: appId,
+        category: category,
+        ent: 'cn_vip',
+      ),
+    );
+
+    try {
+      final result = await evaluator.evaluateFileToResult(
+        filePath: recordResult.path,
+        text: content.contentValue,
+        authQuery: authQuery,
+        timeout: const Duration(seconds: 20),
+      );
+      final score = (result.totalScore ?? 0).round().clamp(0, 100);
+      if (!mounted) return;
+      setState(() {
+        _lastScore = score;
+      });
+      ToastUtils.showToast(context, '测评得分：$score');
+    } catch (_) {
+      if (!mounted) return;
+      ToastUtils.showToast(context, '测评失败');
+    }
+
+    if (!mounted) return;
     await _showEvaluateDialog();
 
     if (!mounted) return;

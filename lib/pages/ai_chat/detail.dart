@@ -5,6 +5,8 @@ import 'package:tsty_app/components/ai_chat/ai_chat_end_dialog.dart';
 import 'package:tsty_app/components/ai_chat/ai_chat_record_overlay.dart';
 import 'package:tsty_app/components/ai_chat/ai_chat_teacher_area.dart';
 import 'package:tsty_app/components/ai_chat/ai_chat_top_bar.dart';
+import 'package:tsty_app/utils/ToastUtils.dart';
+import 'package:tsty_app/utils/yi_recorder.dart';
 
 class AiChatDetailPage extends StatefulWidget {
   final String? sceneId;
@@ -37,6 +39,10 @@ class _AiChatDetailPageState extends State<AiChatDetailPage> {
 
   bool _isRecording = false;
   bool _isDisabled = false;
+
+  final YiRecorderController _recorder = YiRecorderController();
+  StreamSubscription<double>? _ampSub;
+  double _amplitude = 0.0;
 
   String _teacherState = 'idle';
 
@@ -112,6 +118,9 @@ class _AiChatDetailPageState extends State<AiChatDetailPage> {
     _timer = null;
     _recordCountdown?.cancel();
     _recordCountdown = null;
+    _ampSub?.cancel();
+    _ampSub = null;
+    _recorder.dispose();
     super.dispose();
   }
 
@@ -143,12 +152,35 @@ class _AiChatDetailPageState extends State<AiChatDetailPage> {
     _recordCountdown?.cancel();
     _recordCountdown = null;
 
-    setState(() {
-      _isRecording = true;
-      _isDisabled = false;
-      _recordSeconds = 10;
-      _teacherState = 'listening';
-    });
+    () async {
+      try {
+        await _recorder.start(
+          config: const YiRecorderConfig(
+            format: YiRecorderFormat.wav,
+            sampleRate: 16000,
+            numChannels: 1,
+          ),
+        );
+
+        _ampSub?.cancel();
+        _ampSub = _recorder.amplitudeStream.listen((v) {
+          if (!mounted) return;
+          setState(() => _amplitude = v);
+        });
+
+        if (!mounted) return;
+        setState(() {
+          _isRecording = true;
+          _isDisabled = false;
+          _recordSeconds = 10;
+          _teacherState = 'listening';
+        });
+      } catch (_) {
+        if (!mounted) return;
+        setState(() => _amplitude = 0.0);
+        ToastUtils.showToast(context, '录音失败');
+      }
+    }();
 
     _recordCountdown = Timer.periodic(const Duration(seconds: 1), (_) {
       if (!mounted) return;
@@ -171,26 +203,47 @@ class _AiChatDetailPageState extends State<AiChatDetailPage> {
     _recordCountdown?.cancel();
     _recordCountdown = null;
 
-    setState(() {
-      _isRecording = false;
-      _teacherState = 'thinking';
-      _isDisabled = true;
-    });
+    () async {
+      _ampSub?.cancel();
+      _ampSub = null;
+      _amplitude = 0.0;
 
-    Future.delayed(const Duration(milliseconds: 900), () {
+      try {
+        await _recorder.stop();
+      } catch (_) {
+        if (!mounted) return;
+        setState(() {
+          _isRecording = false;
+          _teacherState = 'idle';
+          _isDisabled = false;
+          _amplitude = 0.0;
+        });
+        ToastUtils.showToast(context, '录音结束失败');
+        return;
+      }
+
       if (!mounted) return;
       setState(() {
-        _teacherState = 'speaking';
+        _isRecording = false;
+        _teacherState = 'thinking';
+        _isDisabled = true;
       });
-    });
 
-    Future.delayed(const Duration(milliseconds: 2400), () {
-      if (!mounted) return;
-      setState(() {
-        _teacherState = 'idle';
-        _isDisabled = false;
+      Future.delayed(const Duration(milliseconds: 900), () {
+        if (!mounted) return;
+        setState(() {
+          _teacherState = 'speaking';
+        });
       });
-    });
+
+      Future.delayed(const Duration(milliseconds: 2400), () {
+        if (!mounted) return;
+        setState(() {
+          _teacherState = 'idle';
+          _isDisabled = false;
+        });
+      });
+    }();
   }
 
   String _formatTime(int s) {
@@ -237,6 +290,7 @@ class _AiChatDetailPageState extends State<AiChatDetailPage> {
             isRecording: _isRecording,
             isDisabled: _isDisabled,
             recordSeconds: _recordSeconds,
+            amplitude: _amplitude,
             onRecordStart: _onRecordStart,
             onRecordEnd: _onRecordEnd,
           ),
