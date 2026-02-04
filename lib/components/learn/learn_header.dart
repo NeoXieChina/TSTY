@@ -44,17 +44,19 @@ class LearnHeader extends StatelessWidget {
         final isCompact = maxWidth < 360;
         final useScroll = maxWidth < 330;
 
-        final cardHeight = isCompact ? 78.0 : 90.0;
+        final cardHeight = isCompact ? 68.0 : 80.0;
         final iconSize = isCompact ? 30.0 : 36.0;
         final titleSize = isCompact ? 14.0 : 16.0;
         final subSize = isCompact ? 12.0 : 14.0;
         final itemMargin = isCompact ? 4.0 : 8.0;
-        final itemPaddingH = isCompact ? 10.0 : 12.0;
+        final itemPaddingH = isCompact ? 5.0 : 10.0;
         final iconGap = isCompact ? 8.0 : 10.0;
 
         final row = Row(
           mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: useScroll ? MainAxisAlignment.start : MainAxisAlignment.center,
+          mainAxisAlignment: useScroll
+              ? MainAxisAlignment.start
+              : MainAxisAlignment.center,
           children: List.generate(_units.length, (index) {
             final isSelected = index == selectedIndex;
             return Material(
@@ -65,10 +67,14 @@ class LearnHeader extends StatelessWidget {
                 child: Container(
                   height: cardHeight,
                   margin: EdgeInsets.symmetric(horizontal: itemMargin),
-                  padding: EdgeInsets.symmetric(vertical: 6, horizontal: itemPaddingH),
+                  padding: EdgeInsets.symmetric(
+                    vertical: 6,
+                    horizontal: itemPaddingH,
+                  ),
                   decoration: BoxDecoration(
-                    color: AppTheme.yiYellow.value
-                        .withValues(alpha: isSelected ? 1.0 : 0.88),
+                    color: AppTheme.yiYellow.value.withValues(
+                      alpha: isSelected ? 1.0 : 0.88,
+                    ),
                     borderRadius: BorderRadius.circular(15),
                     border: isSelected
                         ? Border.all(
@@ -120,7 +126,7 @@ class LearnHeader extends StatelessWidget {
         return Container(
           width: double.infinity,
           alignment: Alignment.center,
-          margin: const EdgeInsets.symmetric(horizontal: 12),
+          //margin: const EdgeInsets.symmetric(horizontal: 12),
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             gradient: LinearGradient(
@@ -218,13 +224,15 @@ class LearnContentHeaderDelegate extends SliverPersistentHeaderDelegate {
         final useScroll = constraints.maxWidth < 330;
         final row = Row(
           mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: useScroll ? MainAxisAlignment.start : MainAxisAlignment.center,
+          mainAxisAlignment: useScroll
+              ? MainAxisAlignment.start
+              : MainAxisAlignment.center,
           children: _getHeaderContent(context),
         );
 
         return Container(
           width: double.infinity,
-          alignment: Alignment.center,
+          alignment: Alignment.topCenter,
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(20),
             gradient: LinearGradient(
@@ -253,10 +261,10 @@ class LearnContentHeaderDelegate extends SliverPersistentHeaderDelegate {
   }
 
   @override
-  double get maxExtent => 120;
+  double get maxExtent => 104;
 
   @override
-  double get minExtent => 100;
+  double get minExtent => 92;
 
   @override
   bool shouldRebuild(covariant SliverPersistentHeaderDelegate oldDelegate) {

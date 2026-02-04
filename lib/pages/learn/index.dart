@@ -132,9 +132,8 @@ class _LearnPageState extends State<LearnPage> {
   Widget build(BuildContext context) {
     return Column(
       children: [
-        const SizedBox(height: 12),
         SizedBox(
-          height: 120,
+          height: 100,
           child: LearnHeader(
             selectedIndex: _selectedUnitIndex,
             onUnitTap: _loadUnit,

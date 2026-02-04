@@ -54,12 +54,39 @@ class MineClassStarsCard extends StatelessWidget {
                   ],
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceAround,
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    for (final s in _sortedStars()) _StarProfile(student: s),
-                  ],
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final list = _sortedStars();
+                    final count = list.isEmpty ? 1 : list.length;
+                    final slotWidth = (constraints.maxWidth / count)
+                        .clamp(72.0, 160.0)
+                        .toDouble();
+
+                    double pickAvatarSize(MineStarStudent s) {
+                      final base = (slotWidth - 26).clamp(52.0, 80.0);
+                      if (s.rank == 1) return base;
+                      if (s.rank == 2) return (base * 0.9).clamp(48.0, base);
+                      return (base * 0.84).clamp(46.0, base);
+                    }
+
+                    return Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        for (final s in list)
+                          SizedBox(
+                            width: slotWidth,
+                            child: Align(
+                              alignment: Alignment.bottomCenter,
+                              child: _StarProfile(
+                                student: s,
+                                avatarSize: pickAvatarSize(s),
+                                slotWidth: slotWidth,
+                              ),
+                            ),
+                          ),
+                      ],
+                    );
+                  },
                 ),
               ],
             ),
@@ -94,8 +121,14 @@ class MineClassStarsCard extends StatelessWidget {
 
 class _StarProfile extends StatelessWidget {
   final MineStarStudent student;
+  final double avatarSize;
+  final double slotWidth;
 
-  const _StarProfile({required this.student});
+  const _StarProfile({
+    required this.student,
+    required this.avatarSize,
+    required this.slotWidth,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -103,22 +136,24 @@ class _StarProfile extends StatelessWidget {
     final yellow = AppTheme.yiYellow.value;
 
     final isFirst = student.rank == 1;
-    final size = student.rank == 1
-        ? 90.0
-        : student.rank == 2
-            ? 80.0
-            : 75.0;
-    final topOffset = student.rank == 1 ? 0.0 : 16.0;
+    final size = avatarSize;
+    final topOffset = isFirst ? 0.0 : (size * 0.18).clamp(10.0, 16.0);
     final medalColor = student.rank == 1
         ? const Color(0xFFFFD700)
         : student.rank == 2
             ? const Color(0xFFC0C0C0)
             : const Color(0xFFCD7F32);
 
+    final nameFontSize = (isFirst ? size * 0.18 : size * 0.17)
+        .clamp(isFirst ? 14.0 : 13.0, isFirst ? 16.0 : 14.0);
+    final heartSize = (size * 0.17).clamp(12.0, 14.0);
+    final medalSize = (size * 0.27).clamp(18.0, 24.0);
+    final medalOffset = -(medalSize * 0.33);
+
     return Padding(
       padding: EdgeInsets.only(top: topOffset),
       child: SizedBox(
-        width: size + 28,
+        width: slotWidth,
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -144,11 +179,11 @@ class _StarProfile extends StatelessWidget {
                   ),
                 ),
                 Positioned(
-                  top: -8,
-                  left: -8,
+                  top: medalOffset,
+                  left: medalOffset,
                   child: Container(
-                    width: 24,
-                    height: 24,
+                    width: medalSize,
+                    height: medalSize,
                     alignment: Alignment.center,
                     decoration: BoxDecoration(
                       color: medalColor,
@@ -160,8 +195,8 @@ class _StarProfile extends StatelessWidget {
                     ),
                     child: Text(
                       '${student.rank}',
-                      style: const TextStyle(
-                        fontSize: 12,
+                      style: TextStyle(
+                        fontSize: (medalSize * 0.5).clamp(10.0, 12.0),
                         fontWeight: FontWeight.w900,
                         color: Colors.white,
                       ),
@@ -174,7 +209,7 @@ class _StarProfile extends StatelessWidget {
             Text(
               student.name,
               style: TextStyle(
-                fontSize: isFirst ? 16 : 14,
+                fontSize: nameFontSize,
                 fontWeight: FontWeight.w800,
                 color: const Color(0xFF3D2800),
               ),
@@ -192,12 +227,12 @@ class _StarProfile extends StatelessWidget {
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.favorite, color: Colors.white, size: 14),
+                  Icon(Icons.favorite, color: Colors.white, size: heartSize),
                   const SizedBox(width: 2),
                   Text(
                     student.badge,
-                    style: const TextStyle(
-                      fontSize: 11,
+                    style: TextStyle(
+                      fontSize: (size * 0.13).clamp(10.0, 11.0),
                       fontWeight: FontWeight.w900,
                       color: Colors.white,
                     ),
