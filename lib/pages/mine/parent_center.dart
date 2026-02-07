@@ -31,6 +31,7 @@ class _ParentCenterPageState extends State<ParentCenterPage> {
     endTime: '20:00',
     restEnabled: true,
     restIntervalMinutes: 15,
+    restDurationMinutes: 5,
   );
 
   final ParentChildInfo _child = const ParentChildInfo(

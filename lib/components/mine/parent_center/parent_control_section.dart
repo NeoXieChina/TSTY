@@ -52,9 +52,12 @@ class ParentControlSection extends StatelessWidget {
           _RestCard(
             enabled: settings.restEnabled,
             interval: settings.restIntervalMinutes,
+            duration: settings.restDurationMinutes,
             onEnabledChanged: (v) => onChanged(settings.copyWith(restEnabled: v)),
             onIntervalChanged: (v) =>
                 onChanged(settings.copyWith(restIntervalMinutes: v)),
+            onDurationChanged: (v) =>
+                onChanged(settings.copyWith(restDurationMinutes: v)),
           ),
           const SizedBox(height: 10),
           _SaveButton(onSave: onSave),
@@ -467,14 +470,18 @@ class _TimeBox extends StatelessWidget {
 class _RestCard extends StatelessWidget {
   final bool enabled;
   final int interval;
+  final int duration;
   final ValueChanged<bool> onEnabledChanged;
   final ValueChanged<int> onIntervalChanged;
+  final ValueChanged<int> onDurationChanged;
 
   const _RestCard({
     required this.enabled,
     required this.interval,
+    required this.duration,
     required this.onEnabledChanged,
     required this.onIntervalChanged,
+    required this.onDurationChanged,
   });
 
   @override
@@ -562,9 +569,9 @@ class _RestCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            '连续使用后强制休息3分钟',
-            style: TextStyle(
+          Text(
+            '连续使用后强制休息$duration分钟',
+            style: const TextStyle(
               fontSize: 12,
               fontWeight: FontWeight.w700,
               color: Color(0xFF999999),
@@ -581,7 +588,83 @@ class _RestCard extends StatelessWidget {
               ],
             ),
           ),
+          const SizedBox(height: 12),
+          Opacity(
+            opacity: enabled ? 1 : 0.55,
+            child: Row(
+              children: [
+                Expanded(
+                  child: _OptionChip(
+                    text: '休息3分钟',
+                    active: duration == 3,
+                    onTap: enabled ? () => onDurationChanged(3) : null,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _OptionChip(
+                    text: '休息5分钟',
+                    active: duration == 5,
+                    onTap: enabled ? () => onDurationChanged(5) : null,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _OptionChip(
+                    text: '休息10分钟',
+                    active: duration == 10,
+                    onTap: enabled ? () => onDurationChanged(10) : null,
+                  ),
+                ),
+              ],
+            ),
+          ),
         ],
+      ),
+    );
+  }
+}
+
+class _OptionChip extends StatelessWidget {
+  final String text;
+  final bool active;
+  final VoidCallback? onTap;
+
+  const _OptionChip({
+    required this.text,
+    required this.active,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final red = Theme.of(context).colorScheme.primary;
+    return Material(
+      color: active ? red.withValues(alpha: 0.06) : Colors.white,
+      borderRadius: BorderRadius.circular(14),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(14),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: active ? red : const Color(0xFFE0E0E0),
+              width: 2,
+            ),
+          ),
+          child: Center(
+            child: Text(
+              text,
+              style: TextStyle(
+                fontSize: 12,
+                fontWeight: FontWeight.w900,
+                color: active ? red : const Color(0xFF666666),
+              ),
+            ),
+          ),
+        ),
       ),
     );
   }

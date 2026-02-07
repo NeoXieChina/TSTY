@@ -27,6 +27,7 @@ class LearnLevelMap extends StatelessWidget {
   final double nodeSize;
   final double strokeWidth;
   final Color? strokeColor;
+  final bool blocked;
   final ValueChanged<LearnLevelData>? onLevelTap;
 
   const LearnLevelMap({
@@ -38,6 +39,7 @@ class LearnLevelMap extends StatelessWidget {
     this.nodeSize = 72.0,
     this.strokeWidth = 8.0,
     this.strokeColor,
+    this.blocked = false,
     this.onLevelTap,
   });
 
@@ -88,6 +90,7 @@ class LearnLevelMap extends StatelessWidget {
                     top: canvasHeight - bottomPadding - nodeSize - (i * spacingY),
                     left: (i % 2 == 0) ? leftX : rightX,
                     size: nodeSize,
+                    blocked: blocked,
                     onTap: onLevelTap,
                   ),
               ],
@@ -104,6 +107,7 @@ class _LearnLevelNodePositioned extends StatelessWidget {
   final double top;
   final double left;
   final double size;
+  final bool blocked;
   final ValueChanged<LearnLevelData>? onTap;
 
   const _LearnLevelNodePositioned({
@@ -111,6 +115,7 @@ class _LearnLevelNodePositioned extends StatelessWidget {
     required this.top,
     required this.left,
     required this.size,
+    required this.blocked,
     required this.onTap,
   });
 
@@ -134,6 +139,8 @@ class _LearnLevelNodePositioned extends StatelessWidget {
         level.status == LearnLevelStatus.completed ||
         level.status == LearnLevelStatus.perfect;
 
+    final shouldGrey = blocked && canTap;
+
     return Positioned(
       left: left,
       top: top,
@@ -143,55 +150,68 @@ class _LearnLevelNodePositioned extends StatelessWidget {
           InkWell(
             onTap: canTap ? () => onTap?.call(level) : null,
             borderRadius: BorderRadius.circular(18),
-            child: SizedBox(
-              width: size,
-              height: size,
-              child: Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  Positioned.fill(
-                    child: Image.asset(_assetPath, fit: BoxFit.contain),
-                  ),
-                  if (level.status == LearnLevelStatus.perfect)
-                    Positioned(
-                      right: -4,
-                      top: -6,
-                      child: Container(
-                        padding: const EdgeInsets.all(4),
-                        decoration: BoxDecoration(
-                          color: Colors.white.withValues(alpha: 0.92),
-                          borderRadius: BorderRadius.circular(999),
-                          boxShadow: [
-                            BoxShadow(
-                              color: Colors.black.withValues(alpha: 0.14),
-                              blurRadius: 8,
-                              offset: const Offset(0, 3),
+            child: Opacity(
+              opacity: shouldGrey ? 0.55 : 1,
+              child: ColorFiltered(
+                colorFilter: shouldGrey
+                    ? const ColorFilter.matrix(<double>[
+                        0.2126, 0.7152, 0.0722, 0, 0,
+                        0.2126, 0.7152, 0.0722, 0, 0,
+                        0.2126, 0.7152, 0.0722, 0, 0,
+                        0, 0, 0, 1, 0,
+                      ])
+                    : const ColorFilter.mode(Colors.transparent, BlendMode.dst),
+                child: SizedBox(
+                  width: size,
+                  height: size,
+                  child: Stack(
+                    clipBehavior: Clip.none,
+                    children: [
+                      Positioned.fill(
+                        child: Image.asset(_assetPath, fit: BoxFit.contain),
+                      ),
+                      if (level.status == LearnLevelStatus.perfect)
+                        Positioned(
+                          right: -4,
+                          top: -6,
+                          child: Container(
+                            padding: const EdgeInsets.all(4),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withValues(alpha: 0.92),
+                              borderRadius: BorderRadius.circular(999),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.black.withValues(alpha: 0.14),
+                                  blurRadius: 8,
+                                  offset: const Offset(0, 3),
+                                ),
+                              ],
                             ),
-                          ],
+                            child: const Icon(
+                              Icons.workspace_premium_rounded,
+                              size: 16,
+                              color: Color(0xFFF0C000),
+                            ),
+                          ),
                         ),
-                        child: const Icon(
-                          Icons.workspace_premium_rounded,
-                          size: 16,
-                          color: Color(0xFFF0C000),
+                      Positioned(
+                        left: 0,
+                        right: 0,
+                        bottom: -2,
+                        child: Center(
+                          child: Text(
+                            '${level.id}',
+                            style: const TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w800,
+                              color: Colors.black87,
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  Positioned(
-                    left: 0,
-                    right: 0,
-                    bottom: -2,
-                    child: Center(
-                      child: Text(
-                        '${level.id}',
-                        style: const TextStyle(
-                          fontSize: 14,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.black87,
-                        ),
-                      ),
-                    ),
+                    ],
                   ),
-                ],
+                ),
               ),
             ),
           ),

@@ -6,6 +6,7 @@ import 'package:tsty_app/components/ai_chat/ai_chat_scene_grid_sliver.dart';
 import 'package:tsty_app/components/ai_chat/ai_chat_section_header_sliver.dart';
 import 'package:tsty_app/components/ai_chat/ai_chat_teacher_intro_sliver.dart';
 import 'package:tsty_app/components/common/select_character_dialog.dart';
+import 'package:tsty_app/services/parental_control.dart';
 import 'package:tsty_app/utils/user_prefs.dart';
 
 class AiChatPage extends StatefulWidget {
@@ -16,6 +17,8 @@ class AiChatPage extends StatefulWidget {
 }
 
 class _AiChatPageState extends State<AiChatPage> {
+  bool _parentalBlocked = false;
+
   final List<AiChatSceneItem> _scenes = const [
     AiChatSceneItem(
       id: 'greeting',
@@ -99,6 +102,18 @@ class _AiChatPageState extends State<AiChatPage> {
     ),
   ];
 
+  @override
+  void initState() {
+    super.initState();
+    _refreshParentalControl();
+  }
+
+  Future<void> _refreshParentalControl() async {
+    final result = await ParentalControlGuard.checkCanStartAction();
+    if (!mounted) return;
+    setState(() => _parentalBlocked = !result.allowed);
+  }
+
   final List<AiChatRecentChat> _recentChats = const [
     AiChatRecentChat(
       id: '1',
@@ -126,10 +141,20 @@ class _AiChatPageState extends State<AiChatPage> {
       return;
     }
 
-    Navigator.of(context).pushNamed(
-      '/ai-chat/detail',
-      arguments: {'sceneId': scene.id, 'sceneName': scene.name},
-    );
+    () async {
+      final guard = await ParentalControlGuard.checkCanStartAction();
+      if (!guard.allowed) {
+        if (!mounted) return;
+        await showParentalControlBlockedSheet(context: context, result: guard);
+        return;
+      }
+
+      if (!mounted) return;
+      Navigator.of(context).pushNamed(
+        '/ai-chat/detail',
+        arguments: {'sceneId': scene.id, 'sceneName': scene.name},
+      );
+    }();
   }
 
   void _onRecentTap(AiChatRecentChat item) {
@@ -176,7 +201,11 @@ class _AiChatPageState extends State<AiChatPage> {
           iconColor: warmRed,
           title: '选择对话场景',
         ),
-        AiChatSceneGridSliver(scenes: _scenes, onSceneTap: _onSceneTap),
+        AiChatSceneGridSliver(
+          scenes: _scenes,
+          blocked: _parentalBlocked,
+          onSceneTap: _onSceneTap,
+        ),
         AiChatSectionHeaderSliver(
           icon: Icons.history,
           iconColor: warmRed,

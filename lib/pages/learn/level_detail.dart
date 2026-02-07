@@ -2,22 +2,18 @@ import 'dart:async';
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:audioplayers/audioplayers.dart';
-import 'package:flutter/services.dart';
 import 'package:tsty_app/api/learn.dart';
-import 'package:tsty_app/api/ise.dart';
 import 'package:tsty_app/components/common/YiSun.dart';
 import 'package:tsty_app/components/learn/level_detail/level_detail_card.dart';
 import 'package:tsty_app/components/learn/level_detail/level_detail_evaluate_card.dart';
-import 'package:tsty_app/components/learn/level_detail/level_detail_eval_dialog.dart';
 import 'package:tsty_app/components/learn/level_detail/level_detail_header.dart';
-import 'package:tsty_app/constants/index.dart';
 import 'package:tsty_app/routes/route_observer.dart';
 import 'package:tsty_app/style/app_theme.dart';
 import 'package:tsty_app/utils/ToastUtils.dart';
 import 'package:tsty_app/services/learning_duration_tracker.dart';
 import 'package:tsty_app/services/level_evaluation_flow.dart';
 import 'package:tsty_app/services/level_audio_player.dart';
+import 'package:tsty_app/services/parental_control.dart';
 import 'package:tsty_app/viewmodels/level_detail_view_model.dart';
 import 'package:tsty_app/utils/yi_recorder.dart';
 import 'package:tsty_app/viewmodels/learn.dart';
@@ -80,6 +76,7 @@ class _LevelDetailPageState extends State<LevelDetailPage>
     with WidgetsBindingObserver, RouteAware {
   late final LevelDetailViewModel _vm;
   late final LearningDurationTracker _durationTracker;
+  final ParentalControlUsageTracker _usageTracker = ParentalControlUsageTracker();
   late final LevelAudioPlayer _audioPlayer;
   late final LevelEvaluationFlow _evaluationFlow;
   final YiRecorderController _recorder = YiRecorderController();
@@ -112,6 +109,7 @@ class _LevelDetailPageState extends State<LevelDetailPage>
     _vm.setContent(widget.levelContent);
 
     WidgetsBinding.instance.addObserver(this);
+    _usageTracker.start();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _durationTracker.start();
@@ -153,6 +151,7 @@ class _LevelDetailPageState extends State<LevelDetailPage>
     WidgetsBinding.instance.removeObserver(this);
 
     _durationTracker.dispose();
+    _usageTracker.stop();
     _audioPlayer.dispose();
     _recordDurationSub?.cancel();
     _recordDurationSub = null;
@@ -191,6 +190,15 @@ class _LevelDetailPageState extends State<LevelDetailPage>
       return;
     }
 
+    final guard = await ParentalControlGuard.checkCanStartAction();
+    if (!guard.allowed) {
+      if (!mounted) return;
+      await showParentalControlBlockedSheet(context: context, result: guard);
+      return;
+    }
+
+    if (!mounted) return;
+
     final nextIndex = _vm.currentLevel + 1;
     if (_vm.levelIds.isEmpty) {
       _toast('无法获取下一关');
@@ -209,10 +217,9 @@ class _LevelDetailPageState extends State<LevelDetailPage>
       return;
     }
 
-    final localContext = context;
-    final rootNavigator = Navigator.of(localContext, rootNavigator: true);
+    final rootNavigator = Navigator.of(context, rootNavigator: true);
     showDialog<void>(
-      context: localContext,
+      context: context,
       barrierDismissible: false,
       builder: (context) {
         return const Center(child: CircularProgressIndicator());
@@ -221,12 +228,12 @@ class _LevelDetailPageState extends State<LevelDetailPage>
 
     try {
       final content = await getLevelDetailsAPI(nextLevelId);
-      if (!localContext.mounted) return;
+      if (!mounted) return;
 
       if (rootNavigator.mounted && rootNavigator.canPop()) {
         rootNavigator.pop();
       }
-      Navigator.of(localContext).pushReplacementNamed(
+      Navigator.of(context).pushReplacementNamed(
         '/learn/level-detail',
         arguments: {
           'unitId': widget.unitId,
@@ -238,12 +245,12 @@ class _LevelDetailPageState extends State<LevelDetailPage>
         },
       );
     } catch (_) {
-      if (!localContext.mounted) return;
+      if (!mounted) return;
 
       if (rootNavigator.mounted && rootNavigator.canPop()) {
         rootNavigator.pop();
       }
-      ToastUtils.showToast(localContext, '获取关卡详情失败');
+      ToastUtils.showToast(context, '获取关卡详情失败');
     }
   }
 
@@ -252,11 +259,22 @@ class _LevelDetailPageState extends State<LevelDetailPage>
   }
 
   void _playStandard() {
-    _audioPlayer.playStandard(
-      content: _vm.content ?? LevelContent.empty,
-      onUnsupported: () => _toast('播放标准音（示例）'),
-      onMissingAsset: () => _toast('暂无标准音'),
-    );
+    () async {
+      final guard = await ParentalControlGuard.checkCanStartAction();
+      if (!guard.allowed) {
+        if (!mounted) return;
+        await showParentalControlBlockedSheet(context: context, result: guard);
+        return;
+      }
+
+      if (!mounted) return;
+
+      _audioPlayer.playStandard(
+        content: _vm.content ?? LevelContent.empty,
+        onUnsupported: () => _toast('播放标准音（示例）'),
+        onMissingAsset: () => _toast('暂无标准音'),
+      );
+    }();
   }
 
   void _playTip() {
@@ -271,8 +289,16 @@ class _LevelDetailPageState extends State<LevelDetailPage>
   void _startRecording() {
     if (_recording) return;
     () async {
-      try {
+      final guard = await ParentalControlGuard.checkCanStartAction();
+      if (!guard.allowed) {
         if (!mounted) return;
+        await showParentalControlBlockedSheet(context: context, result: guard);
+        return;
+      }
+
+      if (!mounted) return;
+
+      try {
         setState(() {
           _recording = true;
           _recordStatus = '正在录音中...';
@@ -355,6 +381,7 @@ class _LevelDetailPageState extends State<LevelDetailPage>
       return;
     }
 
+    if (!mounted) return;
     await _evaluationFlow.evaluateAndShowDialog(
       context: context,
       recordResult: recordResult,
@@ -390,6 +417,7 @@ class _LevelDetailPageState extends State<LevelDetailPage>
                 current: _vm.currentLevel,
                 total: _vm.totalLevels,
               ),
+              const ParentalControlSoftBanner(),
               Expanded(
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 18, 16, 24),

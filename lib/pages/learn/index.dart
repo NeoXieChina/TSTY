@@ -4,6 +4,7 @@ import 'package:tsty_app/api/learn.dart';
 import 'package:tsty_app/components/learn/learn_header.dart';
 import 'package:tsty_app/components/learn/learn_level_map.dart';
 import 'package:tsty_app/constants/index.dart';
+import 'package:tsty_app/services/parental_control.dart';
 import 'package:tsty_app/viewmodels/learn.dart';
 
 class LearnPage extends StatefulWidget {
@@ -22,10 +23,17 @@ class _LearnPageState extends State<LearnPage> {
   int _totalLevels = 23;
   List<LearnLevelData> _levelData = const [];
   int _loadSeq = 0;
+  bool _parentalBlocked = false;
   List<LearnUnitProgress> _unitProgressCache = List<LearnUnitProgress>.generate(
     4,
     (_) => const LearnUnitProgress(completed: 0, total: 0),
   );
+
+  Future<void> _refreshParentalControl() async {
+    final result = await ParentalControlGuard.checkCanStartAction();
+    if (!mounted) return;
+    setState(() => _parentalBlocked = !result.allowed);
+  }
 
   Future<UnitProgressResponse> _getLevels(String unitId) async {
     return await getUnitProgressAPI(unitId);
@@ -180,6 +188,7 @@ class _LearnPageState extends State<LearnPage> {
   @override
   void initState() {
     super.initState();
+    _refreshParentalControl();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       _loadUnit(_selectedUnitIndex);
@@ -248,11 +257,25 @@ class _LearnPageState extends State<LearnPage> {
                           },
                           child: LearnLevelMap(
                             levels: _levelData,
+                            blocked: _parentalBlocked,
                             onLevelTap: (level) {
                               () async {
                                 final localContext = context;
                                 final levelId = level.levelId;
                                 if (levelId == null || levelId.isEmpty) return;
+
+                                final guard =
+                                    await ParentalControlGuard.checkCanStartAction();
+                                if (!guard.allowed) {
+                                  if (!localContext.mounted) return;
+                                  await showParentalControlBlockedSheet(
+                                    context: localContext,
+                                    result: guard,
+                                  );
+                                  return;
+                                }
+
+                                if (!localContext.mounted) return;
 
                                 final rootNavigator = Navigator.of(
                                   localContext,

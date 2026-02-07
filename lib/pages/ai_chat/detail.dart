@@ -5,6 +5,7 @@ import 'package:tsty_app/components/ai_chat/ai_chat_end_dialog.dart';
 import 'package:tsty_app/components/ai_chat/ai_chat_record_overlay.dart';
 import 'package:tsty_app/components/ai_chat/ai_chat_teacher_area.dart';
 import 'package:tsty_app/components/ai_chat/ai_chat_top_bar.dart';
+import 'package:tsty_app/services/parental_control.dart';
 import 'package:tsty_app/utils/ToastUtils.dart';
 import 'package:tsty_app/utils/yi_recorder.dart';
 
@@ -43,6 +44,8 @@ class _AiChatDetailPageState extends State<AiChatDetailPage> {
   final YiRecorderController _recorder = YiRecorderController();
   StreamSubscription<double>? _ampSub;
   double _amplitude = 0.0;
+
+  final ParentalControlUsageTracker _usageTracker = ParentalControlUsageTracker();
 
   String _teacherState = 'idle';
 
@@ -85,6 +88,8 @@ class _AiChatDetailPageState extends State<AiChatDetailPage> {
   void initState() {
     super.initState();
 
+    _usageTracker.start();
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _showOpening();
     });
@@ -93,16 +98,6 @@ class _AiChatDetailPageState extends State<AiChatDetailPage> {
       setState(() {
         _seconds++;
       });
-
-      if (_seconds >= 600) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('今天聊得很开心，休息一下明天再聊吧~')),
-        );
-        Future.delayed(const Duration(milliseconds: 1800), () {
-          if (!mounted) return;
-          Navigator.of(context).maybePop();
-        });
-      }
     });
   }
 
@@ -121,6 +116,7 @@ class _AiChatDetailPageState extends State<AiChatDetailPage> {
     _ampSub?.cancel();
     _ampSub = null;
     _recorder.dispose();
+    _usageTracker.stop();
     super.dispose();
   }
 
@@ -153,6 +149,13 @@ class _AiChatDetailPageState extends State<AiChatDetailPage> {
     _recordCountdown = null;
 
     () async {
+      final guard = await ParentalControlGuard.checkCanStartAction();
+      if (!guard.allowed) {
+        if (!mounted) return;
+        await showParentalControlBlockedSheet(context: context, result: guard);
+        return;
+      }
+
       try {
         await _recorder.start(
           config: const YiRecorderConfig(
@@ -279,6 +282,7 @@ class _AiChatDetailPageState extends State<AiChatDetailPage> {
                   onBack: _onBack,
                   onEnd: _onEnd,
                 ),
+                const ParentalControlSoftBanner(),
                 AiChatTeacherArea(
                   teacherAsset: 'lib/assets/girl.webp',
                   statusText: _statusText,

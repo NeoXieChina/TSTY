@@ -9,6 +9,7 @@ class ParentCenterPrefs {
   static const _kEndTime = 'parentControl.endTime';
   static const _kRestEnabled = 'parentControl.restEnabled';
   static const _kRestIntervalMinutes = 'parentControl.restIntervalMinutes';
+  static const _kRestDurationMinutes = 'parentControl.restDurationMinutes';
 
   static Future<bool> isParentLoggedIn() async {
     final prefs = await SharedPreferences.getInstance();
@@ -34,6 +35,7 @@ class ParentCenterPrefs {
       endTime: prefs.getString(_kEndTime) ?? '20:00',
       restEnabled: prefs.getBool(_kRestEnabled) ?? true,
       restIntervalMinutes: prefs.getInt(_kRestIntervalMinutes) ?? 15,
+      restDurationMinutes: prefs.getInt(_kRestDurationMinutes) ?? 5,
     );
   }
 
@@ -45,6 +47,7 @@ class ParentCenterPrefs {
     await prefs.setString(_kEndTime, settings.endTime);
     await prefs.setBool(_kRestEnabled, settings.restEnabled);
     await prefs.setInt(_kRestIntervalMinutes, settings.restIntervalMinutes);
+    await prefs.setInt(_kRestDurationMinutes, settings.restDurationMinutes);
   }
 }
 
@@ -55,6 +58,7 @@ class ParentControlSettings {
   final String endTime;
   final bool restEnabled;
   final int restIntervalMinutes;
+  final int restDurationMinutes;
 
   const ParentControlSettings({
     required this.dailyLimitMinutes,
@@ -63,6 +67,7 @@ class ParentControlSettings {
     required this.endTime,
     required this.restEnabled,
     required this.restIntervalMinutes,
+    required this.restDurationMinutes,
   });
 
   ParentControlSettings copyWith({
@@ -72,6 +77,7 @@ class ParentControlSettings {
     String? endTime,
     bool? restEnabled,
     int? restIntervalMinutes,
+    int? restDurationMinutes,
   }) {
     return ParentControlSettings(
       dailyLimitMinutes: dailyLimitMinutes ?? this.dailyLimitMinutes,
@@ -80,6 +86,7 @@ class ParentControlSettings {
       endTime: endTime ?? this.endTime,
       restEnabled: restEnabled ?? this.restEnabled,
       restIntervalMinutes: restIntervalMinutes ?? this.restIntervalMinutes,
+      restDurationMinutes: restDurationMinutes ?? this.restDurationMinutes,
     );
   }
 }

@@ -4,11 +4,13 @@ import 'package:tsty_app/components/ai_chat/ai_chat_scene_card.dart';
 
 class AiChatSceneGridSliver extends StatelessWidget {
   final List<AiChatSceneItem> scenes;
+  final bool blocked;
   final ValueChanged<AiChatSceneItem> onSceneTap;
 
   const AiChatSceneGridSliver({
     super.key,
     required this.scenes,
+    required this.blocked,
     required this.onSceneTap,
   });
 
@@ -20,7 +22,11 @@ class AiChatSceneGridSliver extends StatelessWidget {
         delegate: SliverChildBuilderDelegate(
           (context, index) {
             final s = scenes[index];
-            return AiChatSceneCard(scene: s, onTap: () => onSceneTap(s));
+            return AiChatSceneCard(
+              scene: s,
+              blocked: blocked,
+              onTap: () => onSceneTap(s),
+            );
           },
           childCount: scenes.length,
         ),
