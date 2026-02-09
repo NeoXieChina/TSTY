@@ -23,6 +23,8 @@ class UserPrefs {
 
   static const _kAccessToken = 'auth.accessToken';
   static const _kRefreshToken = 'auth.refreshToken';
+  static const _kTokenExpiresIn = 'auth.tokenExpiresIn';
+  static const _kTokenObtainedAtMs = 'auth.tokenObtainedAtMs';
 
   static const _kChildProfileJson = 'child.profile.json';
 
@@ -58,6 +60,57 @@ class UserPrefs {
   static Future<void> setAccessToken(String token) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(_kAccessToken, token.trim());
+  }
+
+  static Future<int?> getTokenExpiresInSeconds() async {
+    final prefs = await SharedPreferences.getInstance();
+    final v = prefs.getInt(_kTokenExpiresIn);
+    return (v == null || v <= 0) ? null : v;
+  }
+
+  static Future<int?> getTokenObtainedAtMs() async {
+    final prefs = await SharedPreferences.getInstance();
+    final v = prefs.getInt(_kTokenObtainedAtMs);
+    return (v == null || v <= 0) ? null : v;
+  }
+
+  static Future<void> setTokenMeta({
+    required int tokenExpiresInSeconds,
+    int? obtainedAtMs,
+  }) async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setInt(_kTokenExpiresIn, tokenExpiresInSeconds);
+    await prefs.setInt(
+      _kTokenObtainedAtMs,
+      obtainedAtMs ?? DateTime.now().millisecondsSinceEpoch,
+    );
+  }
+
+  static Future<void> clearTokenMeta() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.remove(_kTokenExpiresIn);
+    await prefs.remove(_kTokenObtainedAtMs);
+  }
+
+  static Future<bool> isAccessTokenExpiringSoon({
+    Duration advance = const Duration(minutes: 5),
+  }) async {
+    final expiresIn = await getTokenExpiresInSeconds();
+    final obtainedAtMs = await getTokenObtainedAtMs();
+    if (expiresIn == null || obtainedAtMs == null) return false;
+    final nowMs = DateTime.now().millisecondsSinceEpoch;
+    final expireAtMs = obtainedAtMs + expiresIn * 1000;
+    return nowMs + advance.inMilliseconds >= expireAtMs;
+  }
+
+  static Future<void> setTokenBundle({
+    required String accessToken,
+    required String refreshToken,
+    required int tokenExpiresInSeconds,
+  }) async {
+    await setAccessToken(accessToken);
+    await setRefreshToken(refreshToken);
+    await setTokenMeta(tokenExpiresInSeconds: tokenExpiresInSeconds);
   }
 
   static Future<void> clearAccessToken() async {

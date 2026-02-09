@@ -84,6 +84,7 @@ class _LoginPageState extends State<LoginPage> {
 
       final accessToken = resp['accessToken']?.toString() ?? '';
       final refreshToken = resp['refreshToken']?.toString() ?? '';
+      final tokenExpiresIn = resp['tokenExpiresIn'];
       if (accessToken.trim().isEmpty) {
         setState(() => _errorText = '登录失败：token为空');
         return;
@@ -92,6 +93,12 @@ class _LoginPageState extends State<LoginPage> {
       await UserPrefs.setAccessToken(accessToken);
       if (refreshToken.trim().isNotEmpty) {
         await UserPrefs.setRefreshToken(refreshToken);
+      }
+      final expiresInSeconds = (tokenExpiresIn is int)
+          ? tokenExpiresIn
+          : int.tryParse(tokenExpiresIn?.toString() ?? '') ?? 0;
+      if (expiresInSeconds > 0) {
+        await UserPrefs.setTokenMeta(tokenExpiresInSeconds: expiresInSeconds);
       }
       await UserPrefs.setChildProfile(resp);
       await UserPrefs.setLoggedIn(true);

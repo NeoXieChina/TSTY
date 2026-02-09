@@ -8,6 +8,7 @@ import 'package:tsty_app/components/settings/settings_item.dart';
 import 'package:tsty_app/components/settings/settings_logout_button.dart';
 import 'package:tsty_app/components/settings/settings_section.dart';
 import 'package:tsty_app/components/settings/settings_section_title.dart';
+import 'package:tsty_app/api/auth.dart';
 import 'package:tsty_app/utils/user_prefs.dart';
 
 class SettingsPage extends StatefulWidget {
@@ -265,7 +266,17 @@ class _SettingsPageState extends State<SettingsPage> {
         return;
       }
 
-      await showMsg('密码修改成功');
+      try {
+        final resp = await changePasswordAPI(
+          oldPasswordMd5: md5Hex(oldPwd),
+          newPasswordMd5: md5Hex(newPwd),
+          confirmPasswordMd5: md5Hex(confirmPwd),
+        );
+        final changedAt = resp['changedAt']?.toString().trim() ?? '';
+        await showMsg(changedAt.isEmpty ? '密码修改成功' : '密码修改成功\n$changedAt');
+      } catch (e) {
+        await showMsg(e.toString().replaceFirst('Exception: ', ''));
+      }
     } finally {
       oldController.dispose();
       newController.dispose();
@@ -288,11 +299,26 @@ class _SettingsPageState extends State<SettingsPage> {
     if (ok != true) return;
 
     setState(() => _logoutLoading = true);
-    await Future<void>.delayed(const Duration(seconds: 1));
+    try {
+      await logoutAPI();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _logoutLoading = false);
+      await _showInfoDialog(
+        '退出失败',
+        e.toString().replaceFirst('Exception: ', ''),
+      );
+      return;
+    }
+
     if (!mounted) return;
     setState(() => _logoutLoading = false);
 
     await UserPrefs.clearLogin();
+    await UserPrefs.clearAccessToken();
+    await UserPrefs.clearRefreshToken();
+    await UserPrefs.clearTokenMeta();
+    await UserPrefs.clearChildProfile();
     if (!mounted) return;
     Navigator.of(context).pushNamedAndRemoveUntil('/login', (route) => false);
   }

@@ -3,9 +3,14 @@ import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:pretty_dio_logger/pretty_dio_logger.dart';
 import 'package:tsty_app/constants/index.dart';
+import 'package:tsty_app/api/auth.dart';
+import 'package:tsty_app/routes/app_navigator.dart';
+import 'package:tsty_app/utils/user_prefs.dart';
 
 class DioUtils {
   final Dio _dio = Dio();
+
+  Future<void>? _refreshFuture;
 
   DioUtils() {
     _dio.options
@@ -40,12 +45,87 @@ class DioUtils {
   void _addInterceptors() {
     _dio.interceptors.add(
       InterceptorsWrapper(
-        onRequest: (options, handler) {
-          // 在请求发送之前做一些处理
+        onRequest: (options, handler) async {
+          try {
+            final path = options.path;
+            final skipAuth = options.extra['skipAuth'] == true ||
+                path.contains(HttpConstants.authRefresh) ||
+                path.contains(HttpConstants.childLoginPassword);
+
+            if (!skipAuth) {
+              final headers = options.headers;
+              final hasAuth = headers['Authorization']?.toString().trim().isNotEmpty == true;
+
+              if (!hasAuth) {
+                final token = await UserPrefs.getAccessToken();
+                final t = token?.trim() ?? '';
+                if (t.isNotEmpty) {
+                  headers['Authorization'] = 'Bearer $t';
+                }
+              }
+
+              final shouldRefresh = await UserPrefs.isAccessTokenExpiringSoon();
+              if (shouldRefresh) {
+                await _refreshAccessTokenLocked();
+                final newToken = await UserPrefs.getAccessToken();
+                final t = newToken?.trim() ?? '';
+                if (t.isNotEmpty) {
+                  options.headers['Authorization'] = 'Bearer $t';
+                }
+              }
+            }
+          } catch (_) {
+            // ignore request-side refresh errors; response-side will handle auth codes
+          }
           return handler.next(options);
         },
-        onResponse: (response, handler) {
-          // 在响应到达之前做一些处理
+        onResponse: (response, handler) async {
+          final data = response.data;
+          if (data is Map && data.containsKey('code')) {
+            final code = data['code'];
+            final intCode = (code is int) ? code : int.tryParse(code?.toString() ?? '');
+
+            if (intCode != null && intCode != GlobalConstants.successState) {
+              final message = data['message']?.toString() ?? '请求失败';
+
+              if ((intCode == 1002 || intCode == 1003) && response.requestOptions.extra['retried'] != true) {
+                try {
+                  await _refreshAccessTokenLocked();
+                  final newToken = await UserPrefs.getAccessToken();
+                  final t = newToken?.trim() ?? '';
+                  if (t.isEmpty) throw Exception('未登录');
+
+                  final opts = response.requestOptions;
+                  opts.extra['retried'] = true;
+                  opts.headers['Authorization'] = 'Bearer $t';
+
+                  final retryResponse = await _dio.fetch(opts);
+                  return handler.resolve(retryResponse);
+                } catch (_) {
+                  await _clearLoginAndRedirect();
+                  return handler.reject(
+                    DioException(
+                      requestOptions: response.requestOptions,
+                      error: message,
+                      type: DioExceptionType.unknown,
+                    ),
+                  );
+                }
+              }
+
+              if (intCode == 1001 || intCode == 1004 || intCode == 1005) {
+                await _clearLoginAndRedirect();
+              }
+
+              return handler.reject(
+                DioException(
+                  requestOptions: response.requestOptions,
+                  error: message,
+                  type: DioExceptionType.badResponse,
+                ),
+              );
+            }
+          }
           return handler.next(response);
         },
         onError: (error, handler) {
@@ -54,6 +134,59 @@ class DioUtils {
         },
       ),
     );
+  }
+
+  Future<void> _refreshAccessTokenLocked() async {
+    if (_refreshFuture != null) {
+      return _refreshFuture!;
+    }
+
+    final fut = () async {
+      final refreshToken = await UserPrefs.getRefreshToken();
+      final rt = refreshToken?.trim() ?? '';
+      if (rt.isEmpty) {
+        throw Exception('refreshToken为空');
+      }
+
+      final deviceId = await UserPrefs.getOrCreateDeviceId();
+      final resp = await refreshTokenAPI(refreshToken: rt, deviceId: deviceId);
+
+      final accessToken = resp['accessToken']?.toString() ?? '';
+      final newRefreshToken = resp['refreshToken']?.toString() ?? '';
+      final tokenExpiresIn = resp['tokenExpiresIn'];
+      final expiresInSeconds = (tokenExpiresIn is int)
+          ? tokenExpiresIn
+          : int.tryParse(tokenExpiresIn?.toString() ?? '') ?? 0;
+      if (accessToken.trim().isEmpty || newRefreshToken.trim().isEmpty || expiresInSeconds <= 0) {
+        throw Exception('刷新Token失败：返回数据不完整');
+      }
+
+      await UserPrefs.setTokenBundle(
+        accessToken: accessToken,
+        refreshToken: newRefreshToken,
+        tokenExpiresInSeconds: expiresInSeconds,
+      );
+      await UserPrefs.setLoggedIn(true);
+    }();
+
+    _refreshFuture = fut;
+    try {
+      await fut;
+    } finally {
+      _refreshFuture = null;
+    }
+  }
+
+  Future<void> _clearLoginAndRedirect() async {
+    await UserPrefs.setLoggedIn(false);
+    await UserPrefs.clearAccessToken();
+    await UserPrefs.clearRefreshToken();
+    await UserPrefs.clearTokenMeta();
+    await UserPrefs.clearChildProfile();
+
+    final nav = appNavigatorKey.currentState;
+    if (nav == null) return;
+    nav.pushNamedAndRemoveUntil('/login', (route) => false);
   }
 
   Future<dynamic> get(

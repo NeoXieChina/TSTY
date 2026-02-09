@@ -4,6 +4,7 @@ import 'package:crypto/crypto.dart';
 import 'package:flutter/foundation.dart';
 import 'package:tsty_app/constants/index.dart';
 import 'package:tsty_app/utils/dio_utils.dart';
+import 'package:tsty_app/utils/user_prefs.dart';
 
 String md5Hex(String input) {
   final bytes = utf8.encode(input);
@@ -41,4 +42,92 @@ Future<Map<String, dynamic>> childLoginPasswordAPI({
     return Map<String, dynamic>.from(result);
   }
   throw Exception('登录响应数据格式错误');
+}
+
+Future<Map<String, dynamic>> changePasswordAPI({
+  required String oldPasswordMd5,
+  required String newPasswordMd5,
+  required String confirmPasswordMd5,
+}) async {
+  final accessToken = await UserPrefs.getAccessToken();
+  final token = accessToken?.trim() ?? '';
+  if (token.isEmpty) {
+    throw Exception('未登录');
+  }
+
+  final body = <String, dynamic>{
+    'oldPassword': oldPasswordMd5,
+    'newPassword': newPasswordMd5,
+    'confirmPassword': confirmPasswordMd5,
+  };
+
+  if (kDebugMode) {
+    debugPrint('Change password request');
+  }
+
+  final result = await dioUtils.post(
+    HttpConstants.changePassword,
+    data: body,
+    headers: <String, dynamic>{
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    },
+  );
+
+  if (kDebugMode) {
+    debugPrint('Change password response data: $result');
+  }
+
+  if (result is Map) {
+    return Map<String, dynamic>.from(result);
+  }
+  return <String, dynamic>{};
+}
+
+Future<Map<String, dynamic>> refreshTokenAPI({
+  required String refreshToken,
+  required String deviceId,
+}) async {
+  final body = <String, dynamic>{
+    'refreshToken': refreshToken,
+    'deviceId': deviceId,
+  };
+
+  if (kDebugMode) {
+    debugPrint('Auth refresh request: deviceId=$deviceId');
+  }
+
+  final result = await dioUtils.post(
+    HttpConstants.authRefresh,
+    data: body,
+    headers: const <String, dynamic>{'Content-Type': 'application/json'},
+  );
+
+  if (kDebugMode) {
+    debugPrint('Auth refresh response data: $result');
+  }
+
+  if (result is Map) {
+    return Map<String, dynamic>.from(result);
+  }
+  throw Exception('刷新Token失败：数据格式错误');
+}
+
+Future<void> logoutAPI() async {
+  final accessToken = await UserPrefs.getAccessToken();
+  final token = accessToken?.trim() ?? '';
+  if (token.isEmpty) return;
+
+  if (kDebugMode) {
+    debugPrint('Auth logout request');
+  }
+
+  await dioUtils.post(
+    HttpConstants.authLogout,
+    data: const <String, dynamic>{},
+    headers: <String, dynamic>{
+      'Content-Type': 'application/json',
+      'Authorization': 'Bearer $token',
+    },
+  );
 }
