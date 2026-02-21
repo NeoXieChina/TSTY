@@ -99,6 +99,10 @@ class _AiChatDetailPageState extends State<AiChatDetailPage>
   String get _teacherAsset =>
       _selectedCharacter == 0 ? 'lib/assets/girl.webp' : 'lib/assets/boy.webp';
 
+  String get _teacherWaitGlbAsset => _selectedCharacter == 0
+      ? 'lib/assets/glb/ayimo_wait.glb'
+      : 'lib/assets/glb/aniure_wait.glb';
+
   @override
   void initState() {
     super.initState();
@@ -386,6 +390,7 @@ class _AiChatDetailPageState extends State<AiChatDetailPage>
                 const ParentalControlSoftBanner(),
                 AiChatTeacherArea(
                   teacherAsset: _teacherAsset,
+                  teacherGlbAsset: _teacherWaitGlbAsset,
                   statusText: _statusText,
                 ),
               ],

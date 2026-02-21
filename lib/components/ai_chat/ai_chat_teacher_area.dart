@@ -1,13 +1,16 @@
 import 'package:flutter/material.dart';
+import 'package:model_viewer_plus/model_viewer_plus.dart';
 
 class AiChatTeacherArea extends StatelessWidget {
   final String teacherAsset;
+  final String? teacherGlbAsset;
   final String statusText;
   final double topOffset;
 
   const AiChatTeacherArea({
     super.key,
     required this.teacherAsset,
+    this.teacherGlbAsset,
     required this.statusText,
     this.topOffset = -140,
   });
@@ -15,6 +18,7 @@ class AiChatTeacherArea extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final showStatus = statusText.trim().isNotEmpty;
+    final glb = (teacherGlbAsset ?? '').trim();
 
     return Expanded(
       child: Center(
@@ -23,12 +27,29 @@ class AiChatTeacherArea extends StatelessWidget {
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              Image.asset(
-                teacherAsset,
-                width: 320,
-                height: 480,
-                fit: BoxFit.contain,
-              ),
+              if (glb.isNotEmpty)
+                SizedBox(
+                  width: 320,
+                  height: 480,
+                  child: ModelViewer(
+                    key: ValueKey<String>(glb),
+                    src: glb,
+                    autoPlay: true,
+                    ar: false,
+                    cameraControls: false,
+                    disableZoom: true,
+                    disablePan: true,
+                    backgroundColor: Colors.transparent,
+                    orientation: '0deg -15deg 0deg',
+                  ),
+                )
+              else
+                Image.asset(
+                  teacherAsset,
+                  width: 320,
+                  height: 480,
+                  fit: BoxFit.contain,
+                ),
               const SizedBox(height: 10),
               SizedBox(
                 height: 38,
