@@ -65,10 +65,18 @@ Future<Map<String, dynamic>> startAiVoiceChatAPI({
     'taskId': taskId,
     'characterId': characterId,
     if (sceneId != null && sceneId.trim().isNotEmpty) 'sceneId': sceneId.trim(),
+    'ASRConfig': {
+      'TurnDetectionMode': 1, // 手动触发模式
+      'VADConfig': {
+        'SilenceTime': 2000, // 较长的静音时间，避免自动触发
+      },
+    },
   };
 
   if (kDebugMode) {
-    debugPrint('AI voicechat start request: roomId=$roomId taskId=$taskId characterId=$characterId sceneId=${sceneId ?? ''}');
+    debugPrint(
+      'AI voicechat start request: roomId=$roomId taskId=$taskId characterId=$characterId sceneId=${sceneId ?? ''} body=$body',
+    );
   }
 
   final result = await dioUtils.post(

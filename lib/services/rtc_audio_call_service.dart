@@ -1,4 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
+import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:volc_engine_rtc/volc_engine_rtc.dart';
@@ -200,6 +202,63 @@ class RtcAudioCallService {
       if (kDebugMode) {
         debugPrint('setMuted failed: $e');
       }
+    }
+  }
+
+  /// 发送触发新一轮对话指令（手动模式）
+  /// 通过 RTC 发送二进制消息给 AI Bot，通知其用户发言结束
+  Future<bool> sendFinishRecognitionMessage({required String botUserId}) async {
+    if (_rtcRoom == null) {
+      if (kDebugMode) {
+        debugPrint('sendFinishRecognitionMessage failed: rtcRoom is null');
+      }
+      return false;
+    }
+
+    try {
+      // 构建 JSON 消息内容
+      final jsonContent = jsonEncode({'Command': 'FinishSpeechRecognition'});
+      final jsonBytes = utf8.encode(jsonContent);
+
+      // 构建 TLV 格式的二进制消息
+      // magic_number (4 bytes: "ctrl") + length (4 bytes, big-endian) + value (json bytes)
+      final magicNumber = utf8.encode('ctrl');
+      final length = jsonBytes.length;
+
+      final buffer = BytesBuilder();
+      buffer.add(magicNumber);
+      // 大端序写入 4 字节长度
+      buffer.add([
+        (length >> 24) & 0xFF,
+        (length >> 16) & 0xFF,
+        (length >> 8) & 0xFF,
+        length & 0xFF,
+      ]);
+      buffer.add(jsonBytes);
+
+      final binaryMessage = buffer.toBytes();
+
+      if (kDebugMode) {
+        debugPrint('sendFinishRecognitionMessage to $botUserId: $jsonContent');
+      }
+
+      // 发送二进制消息给 AI Bot
+      final messageId = await _rtcRoom!.sendUserBinaryMessage(
+        uid: botUserId,
+        message: binaryMessage,
+        config: MessageConfig.reliableOrdered,
+      );
+
+      if (kDebugMode) {
+        debugPrint('sendFinishRecognitionMessage success, messageId: $messageId');
+      }
+
+      return messageId != null && messageId >= 0;
+    } catch (e) {
+      if (kDebugMode) {
+        debugPrint('sendFinishRecognitionMessage failed: $e');
+      }
+      return false;
     }
   }
 

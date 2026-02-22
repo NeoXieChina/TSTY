@@ -4,15 +4,13 @@ import 'package:tsty_app/style/app_theme.dart';
 class AiChatTopBar extends StatelessWidget {
   final String title;
   final String timeText;
-  final VoidCallback onBack;
-  final VoidCallback onEnd;
+  final VoidCallback onExit;
 
   const AiChatTopBar({
     super.key,
     required this.title,
     required this.timeText,
-    required this.onBack,
-    required this.onEnd,
+    required this.onExit,
   });
 
   @override
@@ -35,18 +33,27 @@ class AiChatTopBar extends StatelessWidget {
             child: Row(
               children: [
                 Material(
-                  color: const Color(0xFFFFF5E6),
-                  shape: const CircleBorder(),
+                  color: red,
+                  borderRadius: BorderRadius.circular(999),
                   child: InkWell(
-                    customBorder: const CircleBorder(),
-                    onTap: onBack,
-                    child: const SizedBox(
-                      width: 40,
-                      height: 40,
-                      child: Icon(
-                        Icons.arrow_back_rounded,
-                        size: 26,
-                        color: Color(0xFF3D2800),
+                    borderRadius: BorderRadius.circular(999),
+                    onTap: onExit,
+                    child: const Padding(
+                      padding: EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.close_rounded, color: Colors.white, size: 18),
+                          SizedBox(width: 6),
+                          Text(
+                            '结束',
+                            style: TextStyle(
+                              fontSize: 14,
+                              fontWeight: FontWeight.w900,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ),
@@ -85,32 +92,6 @@ class AiChatTopBar extends StatelessWidget {
                   ),
                 ),
               ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Material(
-            color: red,
-            borderRadius: BorderRadius.circular(999),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(999),
-              onTap: onEnd,
-              child: const Padding(
-                padding: EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                child: Row(
-                  children: [
-                    Icon(Icons.close_rounded, color: Colors.white, size: 18),
-                    SizedBox(width: 6),
-                    Text(
-                      '结束',
-                      style: TextStyle(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w900,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
             ),
           ),
         ],

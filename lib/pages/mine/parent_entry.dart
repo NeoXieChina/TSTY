@@ -51,7 +51,7 @@ class _ParentEntryPageState extends State<ParentEntryPage> {
     });
 
     try {
-      await parentLoginAPI(passwordMd5: md5Hex(pwd));
+      await parentLoginAPI(password: pwd);
       if (!mounted) return;
 
       await ParentCenterPrefs.setParentLoggedIn(true);

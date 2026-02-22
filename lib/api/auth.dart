@@ -13,13 +13,13 @@ String md5Hex(String input) {
 
 Future<Map<String, dynamic>> childLoginPasswordAPI({
   required String username,
-  required String passwordMd5,
+  required String password,
   required String deviceId,
   required String deviceType,
 }) async {
   final body = <String, dynamic>{
     'username': username,
-    'password': passwordMd5,
+    'password': password,
     'deviceId': deviceId,
     'deviceType': deviceType,
   };
@@ -45,10 +45,10 @@ Future<Map<String, dynamic>> childLoginPasswordAPI({
 }
 
 Future<Map<String, dynamic>> parentLoginAPI({
-  required String passwordMd5,
+  required String password,
 }) async {
   final body = <String, dynamic>{
-    'password': passwordMd5,
+    'password': password,
   };
 
   if (kDebugMode) {

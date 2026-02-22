@@ -50,7 +50,8 @@ class DioUtils {
             final path = options.path;
             final skipAuth = options.extra['skipAuth'] == true ||
                 path.contains(HttpConstants.authRefresh) ||
-                path.contains(HttpConstants.childLoginPassword);
+                path.contains(HttpConstants.childLoginPassword) ||
+                path.contains(HttpConstants.parentLogin);
 
             if (!skipAuth) {
               final headers = options.headers;
@@ -80,6 +81,12 @@ class DioUtils {
           return handler.next(options);
         },
         onResponse: (response, handler) async {
+          final path = response.requestOptions.path;
+          final skipAuth = response.requestOptions.extra['skipAuth'] == true ||
+              path.contains(HttpConstants.authRefresh) ||
+              path.contains(HttpConstants.childLoginPassword) ||
+              path.contains(HttpConstants.parentLogin);
+
           final data = response.data;
           if (data is Map && data.containsKey('code')) {
             final code = data['code'];
@@ -88,7 +95,9 @@ class DioUtils {
             if (intCode != null && intCode != GlobalConstants.successState) {
               final message = data['message']?.toString() ?? '请求失败';
 
-              if ((intCode == 1002 || intCode == 1003) && response.requestOptions.extra['retried'] != true) {
+              if (!skipAuth &&
+                  (intCode == 1002 || intCode == 1003) &&
+                  response.requestOptions.extra['retried'] != true) {
                 try {
                   await _refreshAccessTokenLocked();
                   final newToken = await UserPrefs.getAccessToken();
@@ -128,8 +137,31 @@ class DioUtils {
           }
           return handler.next(response);
         },
-        onError: (error, handler) {
-          // 在发生错误时做一些处理
+        onError: (error, handler) async {
+          final opts = error.requestOptions;
+          final path = opts.path;
+          final skipAuth = opts.extra['skipAuth'] == true ||
+              path.contains(HttpConstants.authRefresh) ||
+              path.contains(HttpConstants.childLoginPassword) ||
+              path.contains(HttpConstants.parentLogin);
+
+          final status = error.response?.statusCode;
+          if (!skipAuth && status == 401 && opts.extra['retried'] != true) {
+            try {
+              await _refreshAccessTokenLocked();
+              final newToken = await UserPrefs.getAccessToken();
+              final t = newToken?.trim() ?? '';
+              if (t.isEmpty) throw Exception('未登录');
+
+              opts.extra['retried'] = true;
+              opts.headers['Authorization'] = 'Bearer $t';
+              final retryResponse = await _dio.fetch(opts);
+              return handler.resolve(retryResponse);
+            } catch (_) {
+              await _clearLoginAndRedirect();
+            }
+          }
+
           return handler.next(error);
         },
       ),
@@ -142,31 +174,38 @@ class DioUtils {
     }
 
     final fut = () async {
-      final refreshToken = await UserPrefs.getRefreshToken();
-      final rt = refreshToken?.trim() ?? '';
-      if (rt.isEmpty) {
-        throw Exception('refreshToken为空');
+      try {
+        final refreshToken = await UserPrefs.getRefreshToken();
+        final rt = refreshToken?.trim() ?? '';
+        if (rt.isEmpty) {
+          throw Exception('refreshToken为空');
+        }
+
+        final deviceId = await UserPrefs.getOrCreateDeviceId();
+        final resp = await refreshTokenAPI(refreshToken: rt, deviceId: deviceId);
+
+        final accessToken = resp['accessToken']?.toString() ?? '';
+        final newRefreshToken = resp['refreshToken']?.toString() ?? '';
+        final tokenExpiresIn = resp['tokenExpiresIn'];
+        final expiresInSeconds = (tokenExpiresIn is int)
+            ? tokenExpiresIn
+            : int.tryParse(tokenExpiresIn?.toString() ?? '') ?? 0;
+        if (accessToken.trim().isEmpty ||
+            newRefreshToken.trim().isEmpty ||
+            expiresInSeconds <= 0) {
+          throw Exception('刷新Token失败：返回数据不完整');
+        }
+
+        await UserPrefs.setTokenBundle(
+          accessToken: accessToken,
+          refreshToken: newRefreshToken,
+          tokenExpiresInSeconds: expiresInSeconds,
+        );
+        await UserPrefs.setLoggedIn(true);
+      } catch (e) {
+        await _clearLoginAndRedirect();
+        rethrow;
       }
-
-      final deviceId = await UserPrefs.getOrCreateDeviceId();
-      final resp = await refreshTokenAPI(refreshToken: rt, deviceId: deviceId);
-
-      final accessToken = resp['accessToken']?.toString() ?? '';
-      final newRefreshToken = resp['refreshToken']?.toString() ?? '';
-      final tokenExpiresIn = resp['tokenExpiresIn'];
-      final expiresInSeconds = (tokenExpiresIn is int)
-          ? tokenExpiresIn
-          : int.tryParse(tokenExpiresIn?.toString() ?? '') ?? 0;
-      if (accessToken.trim().isEmpty || newRefreshToken.trim().isEmpty || expiresInSeconds <= 0) {
-        throw Exception('刷新Token失败：返回数据不完整');
-      }
-
-      await UserPrefs.setTokenBundle(
-        accessToken: accessToken,
-        refreshToken: newRefreshToken,
-        tokenExpiresInSeconds: expiresInSeconds,
-      );
-      await UserPrefs.setLoggedIn(true);
     }();
 
     _refreshFuture = fut;

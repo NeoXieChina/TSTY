@@ -3,7 +3,7 @@ class GlobalConstants {
   static const String appName = "TSTY App";
 
   static const String apiBaseUrl = "http://y4134647y5.qicp.vip:10573";
-  static const Duration timeoutDuration = Duration(seconds: 10);
+  static const Duration timeoutDuration = Duration(seconds: 30);
   static const int successState = 0;
 
   static const String xfyunIseEndpoint = "wss://ise-api.xfyun.cn/v2/open-ise";

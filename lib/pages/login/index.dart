@@ -77,7 +77,7 @@ class _LoginPageState extends State<LoginPage> {
 
       final resp = await childLoginPasswordAPI(
         username: username,
-        passwordMd5: md5Hex(password),
+        password: password,
         deviceId: deviceId,
         deviceType: deviceType,
       );

@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:tsty_app/components/ai_chat/ai_chat_record_overlay.dart';
 import 'package:tsty_app/components/ai_chat/ai_chat_teacher_area.dart';
@@ -57,6 +58,9 @@ class _AiChatDetailPageState extends State<AiChatDetailPage>
   late final RealtimeAiVoiceChatSession _aiSession = RealtimeAiVoiceChatSession(_rtc);
   StreamSubscription<RtcAudioCallState>? _rtcStateSub;
   StreamSubscription<RtcAudioCallError?>? _rtcErrSub;
+
+  Future<void>? _closingFuture;
+  bool _allowPop = false;
 
   String _teacherState = 'idle';
   int _selectedCharacter = 0;
@@ -121,6 +125,11 @@ class _AiChatDetailPageState extends State<AiChatDetailPage>
     () async {
       try {
         await _aiSession.start(sceneId: _sceneId);
+
+        // 按住说话模式：默认不推流音频，避免 AI 自动触发
+        try {
+          await _rtc.setMuted(true);
+        } catch (_) {}
 
         _rtcStateSub?.cancel();
         _rtcStateSub = _rtc.stateStream.listen((s) {
@@ -198,53 +207,91 @@ class _AiChatDetailPageState extends State<AiChatDetailPage>
     routeObserver.unsubscribe(this);
     WidgetsBinding.instance.removeObserver(this);
 
-    _timer?.cancel();
-    _timer = null;
-    _recordCountdown?.cancel();
-    _recordCountdown = null;
-    _ampSub?.cancel();
-    _ampSub = null;
-    _rtcStateSub?.cancel();
-    _rtcStateSub = null;
-    _rtcErrSub?.cancel();
-    _rtcErrSub = null;
+    // dispose 里不做页面跳转，只做资源回收；并且通过幂等 close 避免重复销毁。
+    () async {
+      try {
+        await _closeSession(pop: false);
+      } catch (_) {}
+    }();
+
     _recorder.dispose();
     _usageTracker.stop();
     _durationTracker.dispose();
-
-    () async {
-      try {
-        await _aiSession.stop();
-      } catch (_) {}
-    }();
     super.dispose();
   }
 
-  void _onBack() {
-    Navigator.of(context).maybePop();
+  Future<void> _confirmExitAndClose() async {
+    // If we're already closing, avoid showing dialogs / double-closing.
+    if (_closingFuture != null) return;
+
+    final ok = await showYiConfirmDialog(
+      context: context,
+      title: '结束对话',
+      message: '本次对话时长：${_formatDuration(_seconds)}',
+      cancelText: '继续',
+      confirmText: '结束',
+      danger: true,
+      barrierDismissible: false,
+    );
+    if (ok != true) return;
+    await _closeSession(pop: true);
   }
 
-  void _onEnd() {
-    () async {
-      final ok = await showYiConfirmDialog(
-        context: context,
-        title: '结束对话',
-        message: '本次对话时长：${_formatDuration(_seconds)}',
-        cancelText: '继续',
-        confirmText: '结束',
-        danger: true,
-        barrierDismissible: false,
-      );
-      if (ok != true) return;
-
+  Future<void> _closeSession({required bool pop}) async {
+    _closingFuture ??= () async {
+      // Stop UI timers early to avoid setState after dispose.
       _timer?.cancel();
       _timer = null;
+      _recordCountdown?.cancel();
+      _recordCountdown = null;
+
       try {
-        await _aiSession.stop();
+        _ampSub?.cancel();
       } catch (_) {}
-      if (!mounted) return;
-      Navigator.of(context).maybePop();
+      _ampSub = null;
+
+      try {
+        _rtcStateSub?.cancel();
+      } catch (_) {}
+      _rtcStateSub = null;
+
+      try {
+        _rtcErrSub?.cancel();
+      } catch (_) {}
+      _rtcErrSub = null;
+
+      // Ensure RTC audio upstream is stopped first.
+      try {
+        await _rtc.setMuted(true);
+      } catch (_) {}
+
+      // Best-effort stop local recorder.
+      try {
+        if (_isRecording) {
+          await _recorder.stop();
+        }
+      } catch (_) {}
+
+      try {
+        await _aiSession.stop().timeout(
+          const Duration(seconds: 5),
+          onTimeout: () {},
+        );
+      } catch (_) {}
     }();
+
+    await _closingFuture;
+
+    if (mounted) {
+      setState(() {
+        _allowPop = true;
+      });
+    } else {
+      _allowPop = true;
+    }
+    if (!pop) return;
+    if (!mounted) return;
+    Navigator.of(context).pop();
   }
 
   void _onRecordStart() {
@@ -262,6 +309,11 @@ class _AiChatDetailPageState extends State<AiChatDetailPage>
       }
 
       try {
+        // 开始说话：开启推流音频
+        try {
+          await _rtc.setMuted(false);
+        } catch (_) {}
+
         await _recorder.start(
           config: const YiRecorderConfig(
             format: YiRecorderFormat.wav,
@@ -316,6 +368,11 @@ class _AiChatDetailPageState extends State<AiChatDetailPage>
       _ampSub = null;
       _amplitude = 0.0;
 
+      // 结束说话：先关闭推流音频，避免继续触发
+      try {
+        await _rtc.setMuted(true);
+      } catch (_) {}
+
       try {
         await _recorder.stop();
       } catch (_) {
@@ -328,6 +385,21 @@ class _AiChatDetailPageState extends State<AiChatDetailPage>
         });
         ToastUtils.showToast(context, '录音结束失败');
         return;
+      }
+
+      // 发送触发新一轮对话指令给 AI Bot
+      final botUserId = _aiSession.info?.botUserId;
+      if (botUserId != null && botUserId.isNotEmpty) {
+        try {
+          await _rtc.sendFinishRecognitionMessage(botUserId: botUserId);
+          if (kDebugMode) {
+            debugPrint('Sent FinishSpeechRecognition to bot: $botUserId');
+          }
+        } catch (e) {
+          if (kDebugMode) {
+            debugPrint('Failed to send FinishSpeechRecognition: $e');
+          }
+        }
       }
 
       if (!mounted) return;
@@ -368,43 +440,50 @@ class _AiChatDetailPageState extends State<AiChatDetailPage>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Stack(
-        children: [
-          Positioned.fill(
-            child: Image.asset(
-              'lib/assets/ai_page_background.webp',
-              fit: BoxFit.cover,
+    return PopScope(
+      canPop: _allowPop,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) return;
+        if (_allowPop) return;
+        await _confirmExitAndClose();
+      },
+      child: Scaffold(
+        body: Stack(
+          children: [
+            Positioned.fill(
+              child: Image.asset(
+                'lib/assets/ai_page_background.webp',
+                fit: BoxFit.cover,
+              ),
             ),
-          ),
-          SafeArea(
-            bottom: false,
-            child: Column(
-              children: [
-                AiChatTopBar(
-                  title: _sceneTitle,
-                  timeText: _formatTime(_seconds),
-                  onBack: _onBack,
-                  onEnd: _onEnd,
-                ),
-                const ParentalControlSoftBanner(),
-                AiChatTeacherArea(
-                  teacherAsset: _teacherAsset,
-                  teacherGlbAsset: _teacherWaitGlbAsset,
-                  statusText: _statusText,
-                ),
-              ],
+            SafeArea(
+              bottom: false,
+              child: Column(
+                children: [
+                  AiChatTopBar(
+                    title: _sceneTitle,
+                    timeText: _formatTime(_seconds),
+                    onExit: _confirmExitAndClose,
+                  ),
+                  const ParentalControlSoftBanner(),
+                  AiChatTeacherArea(
+                    teacherAsset: _teacherAsset,
+                    teacherGlbAsset: _teacherWaitGlbAsset,
+                    statusText: _statusText,
+                  ),
+                ],
+              ),
             ),
-          ),
-          AiChatRecordOverlay(
-            isRecording: _isRecording,
-            isDisabled: _isDisabled,
-            recordSeconds: _recordSeconds,
-            amplitude: _amplitude,
-            onRecordStart: _onRecordStart,
-            onRecordEnd: _onRecordEnd,
-          ),
-        ],
+            AiChatRecordOverlay(
+              isRecording: _isRecording,
+              isDisabled: _isDisabled,
+              recordSeconds: _recordSeconds,
+              amplitude: _amplitude,
+              onRecordStart: _onRecordStart,
+              onRecordEnd: _onRecordEnd,
+            ),
+          ],
+        ),
       ),
     );
   }
