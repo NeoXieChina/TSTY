@@ -302,7 +302,7 @@ class _LearnPageState extends State<LearnPage> {
                                     rootNavigator.pop();
                                   }
 
-                                  Navigator.of(localContext).pushNamed(
+                                  await Navigator.of(localContext).pushNamed(
                                     '/learn/level-detail',
                                     arguments: {
                                       'unitId': _currentUnitId,
@@ -315,6 +315,9 @@ class _LearnPageState extends State<LearnPage> {
                                           .toList(growable: false),
                                     },
                                   );
+
+                                  if (!mounted) return;
+                                  await _loadUnit(_selectedUnitIndex);
                                 } catch (_) {
                                   if (!localContext.mounted) return;
 
