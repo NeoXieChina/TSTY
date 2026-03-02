@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:math';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:tsty_app/style/app_theme.dart';
 
 class AiChatRecordOverlay extends StatefulWidget {
@@ -29,6 +30,7 @@ class AiChatRecordOverlay extends StatefulWidget {
 class _AiChatRecordOverlayState extends State<AiChatRecordOverlay> {
   final _rnd = Random();
   Timer? _waveTimer;
+  bool _isPressed = false;
 
   late List<_WaveBar> _bars;
 
@@ -186,8 +188,19 @@ class _AiChatRecordOverlayState extends State<AiChatRecordOverlay> {
               bottom: 86,
               child: Center(
                 child: Listener(
-                  onPointerUp: (_) => widget.onRecordEnd(),
-                  onPointerCancel: (_) => widget.onRecordEnd(),
+                  onPointerDown: (_) {
+                    if (widget.isDisabled) return;
+                    HapticFeedback.mediumImpact();
+                    setState(() => _isPressed = true);
+                  },
+                  onPointerUp: (_) {
+                    setState(() => _isPressed = false);
+                    widget.onRecordEnd();
+                  },
+                  onPointerCancel: (_) {
+                    setState(() => _isPressed = false);
+                    widget.onRecordEnd();
+                  },
                   child: GestureDetector(
                     onLongPressStart: (_) {
                       if (widget.isDisabled) return;
@@ -199,29 +212,34 @@ class _AiChatRecordOverlayState extends State<AiChatRecordOverlay> {
                     onLongPressCancel: () {
                       widget.onRecordEnd();
                     },
-                    child: AnimatedContainer(
-                      duration: const Duration(milliseconds: 120),
-                      width: 84,
-                      height: 84,
-                      decoration: BoxDecoration(
-                        color: widget.isDisabled
-                            ? const Color(0xFFCCCCCC)
-                            : (widget.isRecording
-                                ? const Color(0xFFAA0000)
-                                : red),
-                        borderRadius: BorderRadius.circular(999),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.16),
-                            blurRadius: 22,
-                            offset: const Offset(0, 10),
-                          ),
-                        ],
-                      ),
-                      child: const Icon(
-                        Icons.mic_rounded,
-                        size: 44,
-                        color: Colors.white,
+                    child: AnimatedScale(
+                      scale: _isPressed ? 0.92 : 1.0,
+                      duration: const Duration(milliseconds: 100),
+                      curve: Curves.easeOutCubic,
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 150),
+                        width: 84,
+                        height: 84,
+                        decoration: BoxDecoration(
+                          color: widget.isDisabled
+                              ? const Color(0xFFCCCCCC)
+                              : (widget.isRecording
+                                  ? const Color(0xFFAA0000)
+                                  : red),
+                          borderRadius: BorderRadius.circular(999),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: 0.16),
+                              blurRadius: _isPressed ? 12 : 22,
+                              offset: Offset(0, _isPressed ? 4 : 10),
+                            ),
+                          ],
+                        ),
+                        child: const Icon(
+                          Icons.mic_rounded,
+                          size: 44,
+                          color: Colors.white,
+                        ),
                       ),
                     ),
                   ),
