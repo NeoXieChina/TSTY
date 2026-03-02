@@ -51,17 +51,35 @@ class _ParentEntryPageState extends State<ParentEntryPage> {
     });
 
     try {
-      await parentLoginAPI(password: pwd);
+      final resp = await parentLoginAPI(password: pwd);
       if (!mounted) return;
 
       await ParentCenterPrefs.setParentLoggedIn(true);
       if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed('/mine/parent-center');
+
+      if (resp.forceChangePassword) {
+        Navigator.of(context).pushReplacementNamed('/mine/parent-change-password');
+      } else {
+        Navigator.of(context).pushReplacementNamed('/mine/parent-center');
+      }
     } catch (e) {
       if (!mounted) return;
       setState(() {
         _loading = false;
-        _errorText = e.toString().replaceFirst('Exception: ', '');
+        String errorMsg = e.toString().replaceFirst('Exception: ', '');
+        if (errorMsg.contains('40101')) {
+          _errorText = '幼儿未登录，请重新登录';
+        } else if (errorMsg.contains('40102')) {
+          _errorText = 'Token已过期，请重新登录';
+        } else if (errorMsg.contains('40103')) {
+          _errorText = '密码错误，请重试';
+        } else if (errorMsg.contains('40302')) {
+          _errorText = '家长账号已被禁用';
+        } else if (errorMsg.contains('40401')) {
+          _errorText = '家长未绑定该幼儿';
+        } else {
+          _errorText = errorMsg;
+        }
         _passwordController.text = '';
       });
       ToastUtils.showToast(context, _errorText ?? '密码验证失败');

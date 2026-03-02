@@ -1,3 +1,4 @@
+import 'package:dio/dio.dart';
 import 'dart:convert';
 
 import 'package:crypto/crypto.dart';
@@ -44,7 +45,30 @@ Future<Map<String, dynamic>> childLoginPasswordAPI({
   throw Exception('登录响应数据格式错误');
 }
 
-Future<Map<String, dynamic>> parentLoginAPI({
+class ParentLoginResponse {
+  final String parentId;
+  final String parentName;
+  final String relationship;
+  final bool forceChangePassword;
+
+  ParentLoginResponse({
+    required this.parentId,
+    required this.parentName,
+    required this.relationship,
+    required this.forceChangePassword,
+  });
+
+  factory ParentLoginResponse.fromJson(Map<String, dynamic> json) {
+    return ParentLoginResponse(
+      parentId: json['parentId'] ?? '',
+      parentName: json['parentName'] ?? '',
+      relationship: json['relationship'] ?? '',
+      forceChangePassword: json['forceChangePassword'] ?? false,
+    );
+  }
+}
+
+Future<ParentLoginResponse> parentLoginAPI({
   required String password,
 }) async {
   final body = <String, dynamic>{
@@ -58,7 +82,9 @@ Future<Map<String, dynamic>> parentLoginAPI({
   final result = await dioUtils.post(
     HttpConstants.parentLogin,
     data: body,
-    headers: const <String, dynamic>{'Content-Type': 'application/json'},
+    options: Options(
+      contentType: 'application/json; charset=utf-8',
+    ),
   );
 
   if (kDebugMode) {
@@ -66,40 +92,33 @@ Future<Map<String, dynamic>> parentLoginAPI({
   }
 
   if (result is Map) {
-    return Map<String, dynamic>.from(result);
+    return ParentLoginResponse.fromJson(Map<String, dynamic>.from(result));
   }
   throw Exception('家长验证失败：响应数据格式错误');
 }
 
-Future<Map<String, dynamic>> parentChangePasswordAPI({
-  required String oldPasswordMd5,
-  required String newPasswordMd5,
-  required String confirmPasswordMd5,
+Future<void> parentChangePasswordAPI({
+  required String oldPassword,
+  required String newPassword,
+  required String confirmPassword,
 }) async {
   final body = <String, dynamic>{
-    'oldPassword': oldPasswordMd5,
-    'newPassword': newPasswordMd5,
-    'confirmPassword': confirmPasswordMd5,
+    'oldPassword': oldPassword,
+    'newPassword': newPassword,
+    'confirmPassword': confirmPassword,
   };
 
   if (kDebugMode) {
     debugPrint('Parent change password request');
   }
 
-  final result = await dioUtils.post(
+  await dioUtils.post(
     HttpConstants.parentChangePassword,
     data: body,
-    headers: const <String, dynamic>{'Content-Type': 'application/json'},
+    options: Options(
+      contentType: 'application/json; charset=utf-8',
+    ),
   );
-
-  if (kDebugMode) {
-    debugPrint('Parent change password response data: $result');
-  }
-
-  if (result is Map) {
-    return Map<String, dynamic>.from(result);
-  }
-  return <String, dynamic>{};
 }
 
 Future<Map<String, dynamic>> changePasswordAPI({

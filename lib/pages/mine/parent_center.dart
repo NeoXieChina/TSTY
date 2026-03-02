@@ -366,13 +366,12 @@ class _ParentCenterPageState extends State<ParentCenterPage> {
       }
 
       try {
-        final resp = await parentChangePasswordAPI(
-          oldPasswordMd5: md5Hex(oldPwd),
-          newPasswordMd5: md5Hex(newPwd),
-          confirmPasswordMd5: md5Hex(confirmPwd),
+        await parentChangePasswordAPI(
+          oldPassword: oldPwd,
+          newPassword: newPwd,
+          confirmPassword: confirmPwd,
         );
-        final changedAt = resp['changedAt']?.toString().trim() ?? '';
-        await showMsg(changedAt.isEmpty ? '密码修改成功' : '密码修改成功\n$changedAt');
+        await showMsg('密码修改成功');
       } catch (e) {
         await showMsg(e.toString().replaceFirst('Exception: ', ''));
       }

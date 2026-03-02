@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:tsty_app/pages/ai_chat/detail.dart';
 import 'package:tsty_app/pages/learn/level_detail.dart';
 import 'package:tsty_app/pages/mine/edit_profile.dart';
+import 'package:tsty_app/pages/mine/parent_change_password.dart';
 import 'package:tsty_app/pages/mine/parent_center.dart';
 import 'package:tsty_app/pages/mine/parent_entry.dart';
 import 'package:tsty_app/pages/login/index.dart';
@@ -41,6 +42,7 @@ Map<String, Widget Function(BuildContext)> getRootRoutes() {
     "/mine/edit-profile": (context) => _wrapSafeArea(const EditProfilePage()),
     "/mine/parent-entry": (context) => _wrapSafeArea(const ParentEntryPage()),
     "/mine/parent-center": (context) => _wrapSafeArea(const ParentCenterPage()),
+    "/mine/parent-change-password": (context) => _wrapSafeArea(const ParentChangePasswordPage()),
     "/learn/level-detail": (context) => _wrapSafeArea(
       LevelDetailPage.fromArgs(ModalRoute.of(context)?.settings.arguments),
     ),

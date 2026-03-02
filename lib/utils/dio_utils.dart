@@ -243,12 +243,13 @@ class DioUtils {
     String url, {
     Map<String, dynamic>? data,
     Map<String, dynamic>? headers,
+    Options? options,
   }) async {
     return _handleRequest(
       await _dio.post(
         url,
         data: data,
-        options: headers == null ? null : Options(headers: headers),
+        options: options ?? (headers == null ? null : Options(headers: headers)),
       ),
     );
   }
