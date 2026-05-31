@@ -4,6 +4,7 @@ import 'dart:typed_data';
 
 import 'package:flutter/foundation.dart';
 import 'package:volc_engine_rtc/volc_engine_rtc.dart';
+
 import 'package:tsty_app/utils/yi_recorder.dart';
 
 enum RtcAudioCallState {
@@ -31,10 +32,11 @@ class RtcAudioCallSession {
 }
 
 class RtcAudioCallService {
+  RTCVideo? _rtcVideo;
   RTCRoom? _rtcRoom;
-  RTCEngine? _rtcEngine;
 
-  final IRTCRoomEventHandler _roomHandler = IRTCRoomEventHandler();
+  final RTCVideoEventHandler _videoHandler = RTCVideoEventHandler();
+  final RTCRoomEventHandler _roomHandler = RTCRoomEventHandler();
 
   final StreamController<RtcAudioCallState> _stateController =
       StreamController<RtcAudioCallState>.broadcast();
@@ -84,12 +86,25 @@ class RtcAudioCallService {
   }
 
   Future<void> init({required String appId}) async {
+    if (_rtcVideo != null) return;
+
     _emitState(RtcAudioCallState.initializing);
+    _initHandlers();
 
     try {
-      // 使用正确的初始化方式：通过 createRTCEngine 静态方法创建引擎实例
-      final context = RTCVideoContext(appId: appId);
-      _rtcEngine = await RTCEngine.createRTCEngine(context);
+      _rtcVideo = await RTCVideo.createRTCVideo(
+        RTCVideoContext(appId, eventHandler: _videoHandler),
+      );
+      if (_rtcVideo == null) {
+        _emitState(RtcAudioCallState.error);
+        _emitError('createRTCVideo_failed');
+        return;
+      }
+
+      await _rtcVideo?.setDefaultAudioRoute(
+        _speakerphone ? AudioRoute.speakerphone : AudioRoute.earpiece,
+      );
+
       _emitState(RtcAudioCallState.idle);
     } catch (e) {
       _emitState(RtcAudioCallState.error);
@@ -103,7 +118,7 @@ class RtcAudioCallService {
     required String userId,
     required String token,
   }) async {
-    if (_rtcEngine == null) {
+    if (_rtcVideo == null) {
       throw StateError('RtcAudioCallService not initialized');
     }
 
@@ -116,24 +131,37 @@ class RtcAudioCallService {
     _emitState(RtcAudioCallState.joining);
 
     try {
-      _rtcRoom = await _rtcEngine!.createRTCRoom(roomId);
-      _rtcRoom!.setRTCRoomEventHandler(_roomHandler);
+      await _rtcRoom?.leaveRoom();
+    } catch (_) {}
 
-      // 修改：确保提供必需的extraInfo参数
-      final userInfo = UserInfo(
-        userId: userId,
-        extraInfo: '',
-      );
+    try {
+      await _rtcRoom?.destroy();
+    } catch (_) {}
 
+    _rtcRoom = null;
+    _remoteUsers.clear();
+    if (!_remoteUsersController.isClosed) {
+      _remoteUsersController.add(remoteUsers);
+    }
+
+    try {
+      _rtcRoom = await _rtcVideo?.createRTCRoom(roomId);
+      _rtcRoom?.setRTCRoomEventHandler(_roomHandler);
+
+      await _rtcVideo?.startAudioCapture();
+
+      final userInfo = UserInfo(uid: userId);
       final roomConfig = RoomConfig(
-        profile: RoomProfile.communication,
+        isPublishAudio: true,
+        isPublishVideo: false,
+        isAutoSubscribeAudio: true,
+        isAutoSubscribeVideo: false,
       );
 
-      _rtcRoom!.joinRoom(
+      await _rtcRoom?.joinRoom(
         token: token,
         userInfo: userInfo,
         roomConfig: roomConfig,
-        userVisibility: true,
       );
 
       _session = RtcAudioCallSession(roomId: roomId, userId: userId);
@@ -151,10 +179,10 @@ class RtcAudioCallService {
 
   Future<void> setSpeakerphone(bool enabled) async {
     _speakerphone = enabled;
-    if (_rtcEngine == null) return;
+    if (_rtcVideo == null) return;
 
     try {
-      _rtcEngine!.setDefaultAudioRoute(
+      await _rtcVideo?.setDefaultAudioRoute(
         enabled ? AudioRoute.speakerphone : AudioRoute.earpiece,
       );
     } catch (e) {
@@ -169,7 +197,7 @@ class RtcAudioCallService {
     if (_rtcRoom == null) return;
 
     try {
-      _rtcRoom!.publishStreamAudio(!muted);
+      await _rtcRoom?.publishStreamAudio(!muted);
     } catch (e) {
       if (kDebugMode) {
         debugPrint('setMuted failed: $e');
@@ -177,8 +205,8 @@ class RtcAudioCallService {
     }
   }
 
-  /// 发送触发新一轮对话指令(手动模式)
-  /// 通过 RTC 发送二进制消息给 AI Bot,通知其用户发言结束
+  /// 发送触发新一轮对话指令（手动模式）
+  /// 通过 RTC 发送二进制消息给 AI Bot，通知其用户发言结束
   Future<bool> sendFinishRecognitionMessage({required String botUserId}) async {
     if (_rtcRoom == null) {
       if (kDebugMode) {
@@ -214,18 +242,18 @@ class RtcAudioCallService {
         debugPrint('sendFinishRecognitionMessage to $botUserId: $jsonContent');
       }
 
-      // 修改：提供正确的config参数
-      _rtcRoom!.sendUserBinaryMessage(
-        userId: botUserId,
-        buffer: binaryMessage,
-        config: MessageConfig.reliable_ordered,
+      // 发送二进制消息给 AI Bot
+      final messageId = await _rtcRoom!.sendUserBinaryMessage(
+        uid: botUserId,
+        message: binaryMessage,
+        config: MessageConfig.reliableOrdered,
       );
 
       if (kDebugMode) {
-        debugPrint('sendFinishRecognitionMessage success');
+        debugPrint('sendFinishRecognitionMessage success, messageId: $messageId');
       }
 
-      return true;
+      return messageId != null && messageId >= 0;
     } catch (e) {
       if (kDebugMode) {
         debugPrint('sendFinishRecognitionMessage failed: $e');
@@ -235,11 +263,15 @@ class RtcAudioCallService {
   }
 
   Future<void> leave() async {
-    if (_rtcEngine == null) return;
+    if (_rtcVideo == null) return;
 
     _emitState(RtcAudioCallState.leaving);
     try {
-      _rtcRoom?.leaveRoom();
+      await _rtcRoom?.leaveRoom();
+    } catch (_) {}
+
+    try {
+      await _rtcVideo?.stopAudioCapture();
     } catch (_) {}
 
     _session = null;
@@ -252,17 +284,61 @@ class RtcAudioCallService {
     } catch (_) {}
 
     try {
-      _rtcRoom?.destroy();
+      await _rtcRoom?.destroy();
     } catch (_) {}
     _rtcRoom = null;
 
     try {
-      _rtcEngine?.destroy();
+      await _rtcVideo?.destroy();
     } catch (_) {}
-    _rtcEngine = null;
+    _rtcVideo = null;
 
     if (!_stateController.isClosed) await _stateController.close();
     if (!_errorController.isClosed) await _errorController.close();
     if (!_remoteUsersController.isClosed) await _remoteUsersController.close();
+  }
+
+  void _initHandlers() {
+    _videoHandler.onWarning = (WarningCode code) {
+      if (kDebugMode) debugPrint('RTC warning: $code');
+    };
+
+    _videoHandler.onError = (ErrorCode code) {
+      if (kDebugMode) debugPrint('RTC error: $code');
+      _emitState(RtcAudioCallState.error);
+      _emitError('rtc_error_$code');
+    };
+
+    _roomHandler.onRoomStateChanged =
+        (String roomId, String uid, int state, String extraInfo) {
+      if (kDebugMode) {
+        debugPrint('RTC roomState: roomId=$roomId uid=$uid state=$state extra=$extraInfo');
+      }
+      if (state == 0) {
+        _emitState(RtcAudioCallState.joined);
+      } else {
+        _emitState(RtcAudioCallState.error);
+        _emitError('join_room_failed_state_$state');
+      }
+    };
+
+    _roomHandler.onUserJoined = (UserInfo userInfo, int elapsed) {
+      if (kDebugMode) debugPrint('RTC userJoined: ${userInfo.uid}');
+      final uid = userInfo.uid;
+      if (uid.isEmpty) return;
+      _remoteUsers.add(uid);
+      if (!_remoteUsersController.isClosed) {
+        _remoteUsersController.add(remoteUsers);
+      }
+    };
+
+    _roomHandler.onUserLeave = (String uid, UserOfflineReason reason) {
+      if (kDebugMode) debugPrint('RTC userLeave: $uid reason=$reason');
+      if (uid.isEmpty) return;
+      _remoteUsers.remove(uid);
+      if (!_remoteUsersController.isClosed) {
+        _remoteUsersController.add(remoteUsers);
+      }
+    };
   }
 }
